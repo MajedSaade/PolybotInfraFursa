@@ -1,9 +1,6 @@
 name: Deploy Monitoring Stack
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
 jobs:
@@ -23,25 +20,22 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.MONITORING_EC2_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Package code for upload
+      - name: Upload files to EC2 with rsync (excluding .git)
         run: |
-          echo "Zipping without .git..."
-          zip -r monitoring-stack.zip . -x "*.git*" "*.venv*" "__pycache__/*"
+          echo "Syncing files to EC2..."
+          rsync -avz --exclude='.git' --exclude='__pycache__' --exclude='.venv' ./ \
+            ubuntu@${{ secrets.MONITORING_EC2_HOST }}:~/monitoring-stack
 
-      - name: Upload to EC2 and deploy
+      - name: Run remote deployment on EC2
         run: |
-          echo "Uploading zip to EC2..."
-          scp monitoring-stack.zip ubuntu@${{ secrets.MONITORING_EC2_HOST }}:~/
-
-          echo "Running remote deployment..."
           ssh -tt ubuntu@${{ secrets.MONITORING_EC2_HOST }} << 'EOF'
             set -eux
-            rm -rf ~/monitoring-stack
-            unzip -o monitoring-stack.zip -d ~/monitoring-stack
-            rm monitoring-stack.zip
+
+            # Ensure docker-compose is ready
             cd ~/monitoring-stack
-            docker compose down || true
+
             docker compose pull
+            docker compose down || true
             docker compose up -d
             docker ps
           EOF
