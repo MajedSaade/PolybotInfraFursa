@@ -1,17 +1,17 @@
 name: Deploy Monitoring Stack
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
-  workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout Code
         uses: actions/checkout@v4
 
       - name: Setup SSH
@@ -23,42 +23,38 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.MONITORING_EC2_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Upload files to EC2 using rsync (excluding .git)
+      - name: Upload monitoring stack files to EC2 (excluding .git)
         run: |
           rsync -avz --exclude='.git' --exclude='__pycache__' --exclude='.venv' ./ \
             ubuntu@${{ secrets.MONITORING_EC2_HOST }}:~/monitoring-stack
 
-      - name: Run remote deployment on EC2
+      - name: Deploy monitoring stack on EC2
         run: |
           ssh -tt ubuntu@${{ secrets.MONITORING_EC2_HOST }} << 'EOF'
             set -eux
 
-            # Install Docker if not installed
+            # Install Docker if not present
             if ! command -v docker &> /dev/null; then
               echo "Installing Docker..."
               sudo apt-get update
               sudo apt-get install -y docker.io
               sudo systemctl enable docker
-              sudo usermod -aG docker \$USER
+              sudo usermod -aG docker ubuntu
             fi
 
-            # Install Docker Compose v2 if not present
+            # Install Docker Compose v2 plugin if missing
             if ! docker compose version &> /dev/null; then
-              echo "Installing Docker Compose v2..."
+              echo "Installing Docker Compose plugin..."
               mkdir -p ~/.docker/cli-plugins/
               curl -SL https://github.com/docker/compose/releases/download/v2.24.7/docker-compose-linux-x86_64 \
                 -o ~/.docker/cli-plugins/docker-compose
               chmod +x ~/.docker/cli-plugins/docker-compose
             fi
 
-            # Run deployment with Docker Compose
+            # Deploy the stack
             cd ~/monitoring-stack
-
-            # Allow docker group permissions to take effect without logout
-            newgrp docker <<EOC
-              docker compose pull
-              docker compose down || true
-              docker compose up -d
-              docker ps
-             EOC
-             EOF
+            docker compose pull
+            docker compose down || true
+            docker compose up -d
+            docker ps
+            EOF
