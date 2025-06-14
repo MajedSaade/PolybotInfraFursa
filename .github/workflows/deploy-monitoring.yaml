@@ -1,6 +1,9 @@
 name: Deploy Monitoring Stack
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
