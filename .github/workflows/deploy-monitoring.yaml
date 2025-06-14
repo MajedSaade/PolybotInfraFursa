@@ -9,6 +9,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Checkout Code
@@ -30,29 +31,22 @@ jobs:
 
       - name: Deploy monitoring stack on EC2
         run: |
-          ssh -tt ubuntu@${{ secrets.MONITORING_EC2_HOST }} <<EOF
-          set -eux
+          ssh -o ServerAliveInterval=60 -o ServerAliveCountMax=3 -tt ubuntu@${{ secrets.MONITORING_EC2_HOST }} <<'EOF'
+          set -euo pipefail
 
-          # Install Docker if not present
           if ! command -v docker &> /dev/null; then
-            echo "Installing Docker..."
             sudo apt-get update
             sudo apt-get install -y docker.io
             sudo systemctl enable docker
             sudo usermod -aG docker ubuntu
+            sudo systemctl start docker
           fi
 
-          # Install Docker Compose v2 plugin if missing
-          if ! sudo docker compose version &> /dev/null; then
-            echo "Installing Docker Compose plugin..."
-            mkdir -p ~/.docker/cli-plugins/
-            curl -SL https://github.com/docker/compose/releases/download/v2.24.7/docker-compose-linux-x86_64 \
-              -o ~/.docker/cli-plugins/docker-compose
-            chmod +x ~/.docker/cli-plugins/docker-compose
-            echo "✅ Docker Compose plugin installed"
+          if ! command -v docker-compose &> /dev/null; then
+            sudo apt-get update
+            sudo apt-get install -y docker-compose-plugin
           fi
 
-          # Deploy the stack
           cd ~/monitoring-stack
           sudo docker compose pull
           sudo docker compose down || true
