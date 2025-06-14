@@ -23,12 +23,25 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.MONITORING_EC2_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Deploy to Monitoring EC2
+      - name: Package code for upload
         run: |
-          scp -r . ubuntu@${{ secrets.MONITORING_EC2_HOST }}:~/monitoring-stack
-          ssh ubuntu@${{ secrets.MONITORING_EC2_HOST }} << 'EOF'
+          echo "Zipping without .git..."
+          zip -r monitoring-stack.zip . -x "*.git*" "*.venv*" "__pycache__/*"
+
+      - name: Upload to EC2 and deploy
+        run: |
+          echo "Uploading zip to EC2..."
+          scp monitoring-stack.zip ubuntu@${{ secrets.MONITORING_EC2_HOST }}:~/
+
+          echo "Running remote deployment..."
+          ssh -tt ubuntu@${{ secrets.MONITORING_EC2_HOST }} << 'EOF'
+            set -eux
+            rm -rf ~/monitoring-stack
+            unzip -o monitoring-stack.zip -d ~/monitoring-stack
+            rm monitoring-stack.zip
             cd ~/monitoring-stack
             docker compose down || true
             docker compose pull
             docker compose up -d
+            docker ps
           EOF
