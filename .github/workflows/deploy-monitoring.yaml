@@ -9,9 +9,10 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
-      - name: Checkout Code
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup SSH
@@ -19,43 +20,38 @@ jobs:
           SSH_KEY: ${{ secrets.MONITORING_EC2_SSH_KEY }}
         run: |
           mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
           echo "$SSH_KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.MONITORING_EC2_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Upload monitoring stack to EC2
+      - name: Upload files
         run: |
-          rsync -avz --exclude='.git' --exclude='__pycache__' --exclude='.venv' ./ \
-            ubuntu@${{ secrets.MONITORING_EC2_HOST }}:~/monitoring-stack
+          rsync -avz --delete --exclude='.git' --exclude='__pycache__' --exclude='.venv' \
+            ./ ubuntu@${{ secrets.MONITORING_EC2_HOST }}:~/monitoring-stack/
 
-      - name: Deploy monitoring stack on EC2
+      - name: Deploy
         run: |
-          ssh -tt ubuntu@${{ secrets.MONITORING_EC2_HOST }} <<EOF
-          set -eux
-
-          # Install Docker if not present
-          if ! command -v docker &> /dev/null; then
-            echo "Installing Docker..."
-            sudo apt-get update
+          ssh ubuntu@${{ secrets.MONITORING_EC2_HOST }} << 'EOF'
+          set -e
+          
+          if ! command -v docker >/dev/null 2>&1; then
+            sudo apt-get update -q
             sudo apt-get install -y docker.io
             sudo systemctl enable docker
             sudo usermod -aG docker ubuntu
           fi
-
-          # Install Docker Compose v2 plugin if missing
-          if ! sudo docker compose version &> /dev/null; then
-            echo "Installing Docker Compose plugin..."
-            mkdir -p ~/.docker/cli-plugins/
-            curl -SL https://github.com/docker/compose/releases/download/v2.24.7/docker-compose-linux-x86_64 \
-              -o ~/.docker/cli-plugins/docker-compose
-            chmod +x ~/.docker/cli-plugins/docker-compose
-            echo "✅ Docker Compose plugin installed"
+          
+          if ! docker compose version >/dev/null 2>&1; then
+            sudo mkdir -p /usr/local/lib/docker/cli-plugins
+            sudo curl -sL https://github.com/docker/compose/releases/download/v2.24.7/docker-compose-linux-x86_64 \
+              -o /usr/local/lib/docker/cli-plugins/docker-compose
+            sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
           fi
-
-          # Deploy the stack
+          
           cd ~/monitoring-stack
-          sudo docker compose pull
           sudo docker compose down || true
+          sudo docker compose pull
           sudo docker compose up -d
-          sudo docker ps
+          sudo docker compose ps
           EOF
