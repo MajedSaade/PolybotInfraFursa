@@ -9,7 +9,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 15  # full job timeout
+    timeout-minutes: 15
 
     steps:
       - name: Checkout Code
@@ -29,10 +29,10 @@ jobs:
           rsync -avz --exclude='.git' --exclude='__pycache__' --exclude='.venv' ./ \
             ubuntu@${{ secrets.MONITORING_EC2_HOST }}:~/monitoring-stack
 
-      - name: Deploy monitoring stack on EC2
-        timeout-minutes: 10
+      - name: Upload and execute remote deploy script
         run: |
-          ssh -tt ubuntu@${{ secrets.MONITORING_EC2_HOST }} <<EOF
+          ssh ubuntu@${{ secrets.MONITORING_EC2_HOST }} "cat > ~/deploy.sh" <<'EOF'
+          #!/bin/bash
           set -eux
 
           # Install Docker if missing
@@ -54,14 +54,14 @@ jobs:
             echo "✅ Docker Compose plugin installed"
           fi
 
-          # Run the deployment
+          # Deploy stack
           cd ~/monitoring-stack
           sudo docker compose pull
           sudo docker compose down || true
           sudo docker compose up -d
-
-          # Show status and logs to avoid GitHub hanging
           sudo docker ps -a
           sudo docker compose logs || true
           echo "✅ Deployment finished"
-          EOF
+         EOF
+
+          ssh ubuntu@${{ secrets.MONITORING_EC2_HOST }} "chmod +x ~/deploy.sh && bash ~/deploy.sh"
