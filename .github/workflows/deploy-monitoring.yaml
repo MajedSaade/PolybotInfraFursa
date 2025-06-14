@@ -1,0 +1,31 @@
+name: Deploy Monitoring Stack
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        env:
+          SSH_KEY: ${{ secrets.MONITORING_EC2_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.MONITORING_EC2_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to Monitoring EC2
+        run: |
+          scp -r . ubuntu@${{ secrets.MONITORING_EC2_HOST }}:~/monitoring-stack
+          ssh ubuntu@${{ secrets.MONITORING_EC2_HOST }} << 'EOF'
+            cd ~/monitoring-stack
+            docker compose down || true
+            docker compose pull
+            docker compose up -d
+          EOF
