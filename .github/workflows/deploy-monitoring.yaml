@@ -34,23 +34,30 @@ jobs:
         run: |
           ssh -o ServerAliveInterval=60 -o ServerAliveCountMax=3 -tt ubuntu@${{ secrets.MONITORING_EC2_HOST }} <<'EOF'
           set -euo pipefail
+          export DEBIAN_FRONTEND=noninteractive
 
+          echo "Checking Docker installation..."
           if ! command -v docker &> /dev/null; then
-            sudo apt-get update
-            sudo apt-get install -y docker.io
+            echo "Installing Docker..."
+            sudo -E apt-get update -y
+            sudo -E apt-get install -y docker.io
             sudo systemctl enable docker
             sudo usermod -aG docker ubuntu
             sudo systemctl start docker
           fi
 
+          echo "Checking Docker Compose installation..."
           if ! command -v docker-compose &> /dev/null; then
-            sudo apt-get update
-            sudo apt-get install -y docker-compose
+            echo "Installing Docker Compose..."
+            sudo -E apt-get update -y
+            sudo -E apt-get install -y docker-compose
           fi
 
+          echo "Deploying monitoring stack..."
           cd ~/monitoring-stack
-          sudo docker compose pull
-          sudo docker compose down || true
+          sudo docker compose pull --quiet
+          sudo docker compose down --remove-orphans || true
           sudo docker compose up -d
+          echo "Checking container status..."
           sudo docker ps
           EOF
