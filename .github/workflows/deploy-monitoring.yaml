@@ -1,4 +1,3 @@
-#majed
 name: Deploy Monitoring Stack
 
 on:
@@ -10,7 +9,6 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
 
     steps:
       - name: Checkout Code
@@ -30,13 +28,12 @@ jobs:
           rsync -avz --exclude='.git' --exclude='__pycache__' --exclude='.venv' ./ \
             ubuntu@${{ secrets.MONITORING_EC2_HOST }}:~/monitoring-stack
 
-      - name: Upload and execute remote deploy script
+      - name: Deploy monitoring stack on EC2
         run: |
-          ssh ubuntu@${{ secrets.MONITORING_EC2_HOST }} "cat > ~/deploy.sh" <<'EOF'
-          #!/bin/bash
+          ssh -tt ubuntu@${{ secrets.MONITORING_EC2_HOST }} <<EOF
           set -eux
 
-          # Install Docker if missing
+          # Install Docker if not present
           if ! command -v docker &> /dev/null; then
             echo "Installing Docker..."
             sudo apt-get update
@@ -45,7 +42,7 @@ jobs:
             sudo usermod -aG docker ubuntu
           fi
 
-          # Install Docker Compose plugin if missing
+          # Install Docker Compose v2 plugin if missing
           if ! sudo docker compose version &> /dev/null; then
             echo "Installing Docker Compose plugin..."
             mkdir -p ~/.docker/cli-plugins/
@@ -55,14 +52,11 @@ jobs:
             echo "✅ Docker Compose plugin installed"
           fi
 
-          # Deploy stack
+          # Deploy the stack
           cd ~/monitoring-stack
           sudo docker compose pull
           sudo docker compose down || true
           sudo docker compose up -d
-          sudo docker ps -a
-          sudo docker compose logs || true
-          echo "✅ Deployment finished"
+          sudo docker ps
+          echo "✅ success"
          EOF
-
-          ssh ubuntu@${{ secrets.MONITORING_EC2_HOST }} "chmod +x ~/deploy.sh && bash ~/deploy.sh"
