@@ -5,7 +5,7 @@ scrape_configs:
   - job_name: 'otel-instances'
     static_configs:
       - targets:
-          - '10.0.1.10:8889'   # polybot-dev
-          - '10.0.1.11:8889'   # polybot-prod
-          - '10.0.1.12:8889'   # yolo-dev
-          - '10.0.1.13:8889'   # yolo-prod
+          - '10.0.0.44:8889'   # polybot-prod
+          - '10.0.0.9:8889'   # polybot-dev
+          - '10.0.1.90:8889'   # yolo-prod
+          - '10.0.0.66:8889'   # yolo-dev
