@@ -1,4 +1,4 @@
-name: OIDC Role Test
+name: OIDC Debug Test
 
 on:
   push:
@@ -7,18 +7,27 @@ on:
       - feature/tf_cluster_infrastructure
 
 jobs:
-  test-role:
+  debug-oidc:
     runs-on: ubuntu-latest
 
     steps:
     - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Configure AWS credentials via OIDC
+    - name: Dump GitHub OIDC identity token
+      id: id_token
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const token = await core.getIDToken();
+          core.setSecret(token);
+          console.log("🔎 ID Token (truncated):", token.substring(0, 80) + "...");
+
+    - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v2
       with:
         role-to-assume: arn:aws:iam::228281126655:role/Majed-Github-Role
         aws-region: us-west-2
 
-    - name: Get caller identity (verify credentials)
-      run: aws sts get-caller-identity
+    - name: Get AWS identity
+      run: aws sts get-caller-identity || echo "❌ Failed to load credentials"
