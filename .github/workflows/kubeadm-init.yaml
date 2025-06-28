@@ -1,0 +1,51 @@
+name: Initialize Control Plane
+
+on:
+  workflow_run:
+    workflows: ["Provision Infrastructure"]
+    types:
+      - completed
+
+jobs:
+  init:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials using OIDC
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        role-to-assume: arn:aws:iam::228281126655:role/Majed-Github-Role
+        aws-region: us-west-2
+
+    - name: Install AWS CLI (in case it's not preinstalled)
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y unzip curl
+        curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+        unzip awscliv2.zip
+        sudo ./aws/install
+
+    - name: Fetch control plane public IP
+      id: get_ip
+      run: |
+        IP=$(aws ec2 describe-instances \
+          --filters "Name=tag:Name,Values=majed-control-plane-${{ secrets.ENV }}" "Name=instance-state-name,Values=running" \
+          --query "Reservations[0].Instances[0].PublicIpAddress" \
+          --output text)
+
+        echo "✅ Found control plane IP: $IP"
+        echo "CONTROL_PLANE_IP=$IP" >> $GITHUB_ENV
+
+    - name: Run kubeadm-init.sh over SSH
+      run: |
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > key.pem
+        chmod 600 key.pem
+
+        echo "⏳ Waiting 60 seconds for EC2 to be SSH-ready..."
+        sleep 60
+
+        echo "🚀 Running kubeadm-init.sh on $CONTROL_PLANE_IP ..."
+        ssh -o StrictHostKeyChecking=no -i key.pem ubuntu@$CONTROL_PLANE_IP 'bash -s' < scripts/kubeadm-init.sh
