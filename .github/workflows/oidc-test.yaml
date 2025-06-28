@@ -10,24 +10,27 @@ jobs:
   debug-oidc:
     runs-on: ubuntu-latest
 
+    env:
+      ACTIONS_STEP_DEBUG: true
+      ACTIONS_RUNNER_DEBUG: true
+
     steps:
     - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Dump GitHub OIDC identity token
-      id: id_token
-      uses: actions/github-script@v6
-      with:
-        script: |
-          const token = await core.getIDToken();
-          core.setSecret(token);
-          console.log("🔎 ID Token (truncated):", token.substring(0, 80) + "...");
+    - name: Dump GitHub OIDC identity token (sub & aud)
+      run: |
+        echo "🔐 Fetching OIDC token from GitHub Actions..."
+        curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL" | jq .
+      env:
+        ACTIONS_ID_TOKEN_REQUEST_TOKEN: ${{ secrets.ACTIONS_ID_TOKEN_REQUEST_TOKEN }}
+        ACTIONS_ID_TOKEN_REQUEST_URL: ${{ secrets.ACTIONS_ID_TOKEN_REQUEST_URL }}
 
-    - name: Configure AWS credentials
+    - name: Configure AWS credentials using OIDC
       uses: aws-actions/configure-aws-credentials@v2
       with:
         role-to-assume: arn:aws:iam::228281126655:role/Majed-Github-Role
         aws-region: us-west-2
 
-    - name: Get AWS identity
-      run: aws sts get-caller-identity || echo "❌ Failed to load credentials"
+    - name: Verify AWS Identity (sts get-caller-identity)
+      run: aws sts get-caller-identity || echo "❌ Failed to assume role"
