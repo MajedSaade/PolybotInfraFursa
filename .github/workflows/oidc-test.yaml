@@ -1,0 +1,21 @@
+name: OIDC Role Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-role:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials via OIDC
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        role-to-assume: arn:aws:iam::228281126655:role/Majed-Github-Role
+        aws-region: us-west-2
+
+    - name: Get caller identity (verify credentials)
+      run: aws sts get-caller-identity
