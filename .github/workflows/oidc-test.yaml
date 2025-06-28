@@ -1,7 +1,10 @@
 name: OIDC Role Test
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - feature/tf_cluster_infrastructure
 
 jobs:
   test-role:
