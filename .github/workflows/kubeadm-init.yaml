@@ -5,6 +5,7 @@ on:
     workflows: ["Provision Infrastructure"]
     types:
       - completed
+  workflow_dispatch:
 
 jobs:
   init:
@@ -49,12 +50,6 @@ jobs:
           --query "Reservations[0].Instances[0].PublicIpAddress" \
           --output text)
         echo "CONTROL_PLANE_IP=$IP" >> $GITHUB_ENV
-
-    - name: Copy bootstrap manifest to EC2
-      run: |
-        echo "${{ secrets.SSH_PRIVATE_KEY }}" > key.pem
-        chmod 600 key.pem
-        scp -o StrictHostKeyChecking=no -i key.pem ./scripts/bootstrap-namespaces.yaml ubuntu@$CONTROL_PLANE_IP:/home/ubuntu/
 
     - name: Run kubeadm-init.sh on control plane
       run: |
