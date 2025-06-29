@@ -29,10 +29,17 @@ jobs:
         unzip awscliv2.zip
         sudo ./aws/install
 
+    - name: Upload latest kubeadm-init.sh to S3
+      run: |
+        aws s3 cp scripts/kubeadm-init.sh s3://majed-tf-backend/kubeadm-init.sh --region us-west-2
+
     - name: Fetch control plane public IP
       id: get_ip
       run: |
-        IP=$(aws ec2 describe-instances           --filters "Name=tag:Name,Values=majed-control-plane-${{ secrets.ENV }}" "Name=instance-state-name,Values=running"           --query "Reservations[0].Instances[0].PublicIpAddress"           --output text)
+        IP=$(aws ec2 describe-instances \
+          --filters "Name=tag:Name,Values=majed-control-plane-${{ secrets.ENV }}" "Name=instance-state-name,Values=running" \
+          --query "Reservations[0].Instances[0].PublicIpAddress" \
+          --output text)
         echo "CONTROL_PLANE_IP=$IP" >> $GITHUB_ENV
 
     - name: Copy bootstrap manifest to EC2
