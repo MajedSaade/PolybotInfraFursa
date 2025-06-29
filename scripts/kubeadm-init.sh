@@ -64,11 +64,18 @@ aws ssm put-parameter \
   --overwrite \
   --region us-west-2
 
-# Apply dev and prod namespaces if manifest exists
-echo "[INFO] Checking for namespace bootstrap manifest..."
-if [ -f /home/ubuntu/bootstrap-namespaces.yaml ]; then
-  echo "[INFO] Applying namespaces manifest..."
-  kubectl --kubeconfig=/etc/kubernetes/admin.conf apply -f /home/ubuntu/bootstrap-namespaces.yaml
-else
-  echo "[WARN] /home/ubuntu/bootstrap-namespaces.yaml not found. Skipping namespace setup."
-fi
+# ✅ Create dev and prod namespaces inline
+echo "[INFO] Creating dev and prod namespaces directly..."
+cat <<EOF | kubectl --kubeconfig=/etc/kubernetes/admin.conf apply -f -
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dev
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: prod
+EOF
+
+echo "[INFO] Control plane initialization complete."
