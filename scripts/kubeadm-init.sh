@@ -63,3 +63,12 @@ aws ssm put-parameter \
   --value "$JOIN_CMD" \
   --overwrite \
   --region us-west-2
+
+# Apply dev and prod namespaces if manifest exists
+echo "[INFO] Checking for namespace bootstrap manifest..."
+if [ -f /home/ubuntu/bootstrap-namespaces.yaml ]; then
+  echo "[INFO] Applying namespaces manifest..."
+  kubectl --kubeconfig=/etc/kubernetes/admin.conf apply -f /home/ubuntu/bootstrap-namespaces.yaml
+else
+  echo "[WARN] /home/ubuntu/bootstrap-namespaces.yaml not found. Skipping namespace setup."
+fi

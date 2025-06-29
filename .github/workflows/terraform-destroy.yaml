@@ -1,11 +1,8 @@
 name: Destroy Infrastructure
 
 on:
-  workflow_dispatch:
-  push:
-    branches:
-      - main
-      - "**"
+  workflow_dispatch:  # ✅ Manual trigger in GitHub UI only
+
 
 jobs:
   destroy:
