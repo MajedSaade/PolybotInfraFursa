@@ -51,6 +51,7 @@ if ! kubectl --kubeconfig=/etc/kubernetes/admin.conf get pods -n kube-system 2>/
   kubectl --kubeconfig=/etc/kubernetes/admin.conf apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.28.2/manifests/calico.yaml
 fi
 
+
 # ✅ Create dev and prod namespaces BEFORE SSM
 echo "[INFO] Creating dev and prod namespaces directly..."
 cat <<EOF | kubectl --kubeconfig=/etc/kubernetes/admin.conf apply -f -
@@ -64,6 +65,7 @@ kind: Namespace
 metadata:
   name: prod
 EOF
+
 
 # Output the worker join command
 JOIN_CMD=$(kubeadm token create --print-join-command)

@@ -1,6 +1,9 @@
 name: Initialize Control Plane
 
 on:
+  push:
+    paths:
+      - 'scripts/kubeadm-init.sh'
   workflow_run:
     workflows: ["Provision Infrastructure"]
     types:
