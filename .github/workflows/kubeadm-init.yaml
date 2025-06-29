@@ -29,9 +29,17 @@ jobs:
         unzip awscliv2.zip
         sudo ./aws/install
 
-    - name: Upload latest kubeadm-init.sh to S3
+    - name: Upload kubeadm-init.sh to S3 (debug + fail-safe)
       run: |
+        set -e
+        echo "📦 Checking if script exists..."
+        ls -l scripts/kubeadm-init.sh
+        echo "📄 Script content preview:"
+        head -n 10 scripts/kubeadm-init.sh
+
+        echo "☁️ Uploading to S3..."
         aws s3 cp scripts/kubeadm-init.sh s3://majed-tf-backend/scripts/kubeadm-init.sh --region us-west-2
+    
 
     - name: Fetch control plane public IP
       id: get_ip
