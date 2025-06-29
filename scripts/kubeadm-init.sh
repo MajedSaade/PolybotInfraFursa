@@ -51,20 +51,7 @@ if ! kubectl --kubeconfig=/etc/kubernetes/admin.conf get pods -n kube-system 2>/
   kubectl --kubeconfig=/etc/kubernetes/admin.conf apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.28.2/manifests/calico.yaml
 fi
 
-# Output the worker join command
-JOIN_CMD=$(kubeadm token create --print-join-command)
-echo "[INFO] Worker join command:"
-echo "$JOIN_CMD"
-
-# Upload the join command to SSM Parameter Store
-aws ssm put-parameter \
-  --name "/k8s/worker/join-command" \
-  --type "SecureString" \
-  --value "$JOIN_CMD" \
-  --overwrite \
-  --region us-west-2
-
-# ✅ Create dev and prod namespaces inline
+# ✅ Create dev and prod namespaces BEFORE SSM
 echo "[INFO] Creating dev and prod namespaces directly..."
 cat <<EOF | kubectl --kubeconfig=/etc/kubernetes/admin.conf apply -f -
 apiVersion: v1
@@ -77,5 +64,19 @@ kind: Namespace
 metadata:
   name: prod
 EOF
+
+# Output the worker join command
+JOIN_CMD=$(kubeadm token create --print-join-command)
+echo "[INFO] Worker join command:"
+echo "$JOIN_CMD"
+
+# Upload the join command to SSM Parameter Store
+echo "[INFO] Uploading join command to AWS SSM..."
+aws ssm put-parameter \
+  --name "/k8s/worker/join-command" \
+  --type "SecureString" \
+  --value "$JOIN_CMD" \
+  --overwrite \
+  --region us-west-2 || echo "[WARN] Failed to upload to SSM — continuing anyway."
 
 echo "[INFO] Control plane initialization complete."
