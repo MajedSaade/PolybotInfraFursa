@@ -21,7 +21,7 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: us-west-2
 
-    - name: Install AWS CLI (in case it's not preinstalled)
+    - name: Install AWS CLI
       run: |
         sudo apt-get update
         sudo apt-get install -y unzip curl
@@ -32,21 +32,15 @@ jobs:
     - name: Fetch control plane public IP
       id: get_ip
       run: |
-        IP=$(aws ec2 describe-instances \
-          --filters "Name=tag:Name,Values=majed-control-plane-${{ secrets.ENV }}" "Name=instance-state-name,Values=running" \
-          --query "Reservations[0].Instances[0].PublicIpAddress" \
-          --output text)
-
-        echo "✅ Found control plane IP: $IP"
+        IP=$(aws ec2 describe-instances           --filters "Name=tag:Name,Values=majed-control-plane-${{ secrets.ENV }}" "Name=instance-state-name,Values=running"           --query "Reservations[0].Instances[0].PublicIpAddress"           --output text)
         echo "CONTROL_PLANE_IP=$IP" >> $GITHUB_ENV
 
-    - name: Run kubeadm-init.sh over SSH
+    - name: Copy bootstrap manifest to EC2
       run: |
         echo "${{ secrets.SSH_PRIVATE_KEY }}" > key.pem
         chmod 600 key.pem
+        scp -o StrictHostKeyChecking=no -i key.pem ./scripts/bootstrap-namespaces.yaml ubuntu@$CONTROL_PLANE_IP:/home/ubuntu/
 
-        echo "⏳ Waiting 60 seconds for EC2 to be SSH-ready..."
-        sleep 60
-
-        echo "🚀 Running kubeadm-init.sh on $CONTROL_PLANE_IP ..."
+    - name: Run kubeadm-init.sh on control plane
+      run: |
         ssh -o StrictHostKeyChecking=no -i key.pem ubuntu@$CONTROL_PLANE_IP 'bash -s' < scripts/kubeadm-init.sh
