@@ -42,7 +42,9 @@ swapoff -a
 if [ ! -f /etc/kubernetes/admin.conf ]; then
   aws s3 cp s3://majed-tf-backend/scripts/kubeadm-init.sh /tmp/kubeadm-init.sh
   chmod +x /tmp/kubeadm-init.sh
-  sudo /tmp/kubeadm-init.sh
+  # Fetch the instance's private IP
+  CONTROL_PLANE_IP=$(curl -s http://169.254.169.254/latest/meta-data/local-ipv4)
+  sudo /tmp/kubeadm-init.sh "$CONTROL_PLANE_IP"
 else
   echo "Kubernetes already initialized. Skipping kubeadm init."
 fi

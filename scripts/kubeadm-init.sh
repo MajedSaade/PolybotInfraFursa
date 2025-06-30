@@ -9,9 +9,17 @@ if [ -f /etc/kubernetes/admin.conf ]; then
     exit 0
 fi
 
-# Get private IP dynamically from AWS metadata
-PRIVATE_IP=$(curl -s http://169.254.169.254/latest/meta-data/local-ipv4)
-echo "[INFO] Private IP: $PRIVATE_IP"
+# Accept control plane IP as argument or environment variable
+CONTROL_PLANE_IP="${1:-$CONTROL_PLANE_IP}"
+
+# Use provided CONTROL_PLANE_IP or fallback to AWS metadata
+if [ -n "$CONTROL_PLANE_IP" ]; then
+  PRIVATE_IP="$CONTROL_PLANE_IP"
+  echo "[INFO] Using provided control plane IP: $PRIVATE_IP"
+else
+  PRIVATE_IP=$(curl -s http://169.254.169.254/latest/meta-data/local-ipv4)
+  echo "[INFO] Fetched private IP from AWS metadata: $PRIVATE_IP"
+fi
 
 # Initialize Kubernetes control plane
 echo "[INFO] Running kubeadm init..."
