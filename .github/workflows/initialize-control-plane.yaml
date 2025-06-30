@@ -36,8 +36,9 @@ jobs:
     - name: Fetch control plane public IP
       id: get_ip
       run: |
+        ENV="dev"
         IP=$(aws ec2 describe-instances \
-          --filters "Name=tag:Name,Values=majed-control-plane-${{ secrets.ENV }}" "Name=instance-state-name,Values=running" \
+          --filters "Name=tag:Name,Values=majed-control-plane-${ENV}" "Name=instance-state-name,Values=running" \
           --query "Reservations[0].Instances[0].PublicIpAddress" \
           --output text)
         echo "🔑 Using control plane IP: $IP"
