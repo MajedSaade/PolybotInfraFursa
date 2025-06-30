@@ -1,9 +1,6 @@
 name: Initialize Control Plane
 
 on:
-  push:
-    paths:
-      - 'scripts/kubeadm-init.sh'
   workflow_run:
     workflows: ["Provision Infrastructure"]
     types:
@@ -12,6 +9,7 @@ on:
 
 jobs:
   init:
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
 
     steps:
@@ -32,7 +30,6 @@ jobs:
         ls -l scripts/kubeadm-init.sh
         echo "📄 Script content preview:"
         head -n 10 scripts/kubeadm-init.sh
-
         echo "☁️ Uploading to S3..."
         aws s3 cp scripts/kubeadm-init.sh s3://majed-tf-backend/scripts/kubeadm-init.sh --region us-west-2
 
@@ -43,16 +40,15 @@ jobs:
           --filters "Name=tag:Name,Values=majed-control-plane-${{ secrets.ENV }}" "Name=instance-state-name,Values=running" \
           --query "Reservations[0].Instances[0].PublicIpAddress" \
           --output text)
+        echo "🔑 Using control plane IP: $IP"
         echo "CONTROL_PLANE_IP=$IP" >> $GITHUB_ENV
 
-    - name: Create SSH key file
+    - name: Copy bootstrap manifest to EC2
       run: |
         echo "${{ secrets.SSH_PRIVATE_KEY }}" > key.pem
         chmod 600 key.pem
+        scp -o StrictHostKeyChecking=no -i key.pem ./scripts/bootstrap-namespaces.yaml ubuntu@$CONTROL_PLANE_IP:/home/ubuntu/
 
     - name: Run kubeadm-init.sh on control plane
-      env:
-        CONTROL_PLANE_IP: ${{ env.CONTROL_PLANE_IP }}
       run: |
-        echo "🔑 Using control plane IP: $CONTROL_PLANE_IP"
         ssh -o StrictHostKeyChecking=no -i key.pem ubuntu@$CONTROL_PLANE_IP 'bash -s' < scripts/kubeadm-init.sh
