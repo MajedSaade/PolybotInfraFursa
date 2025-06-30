@@ -44,30 +44,30 @@ systemctl enable crio
 systemctl start crio
 
 # Join loop
+echo "🔁 Waiting for join command from SSM..."
 while true; do
   if [ -f /etc/kubernetes/kubelet.conf ]; then
     echo "✅ Already joined the cluster."
     break
   fi
 
-  # Wait to ensure SSM parameter is up-to-date (handle eventual consistency)
-  sleep 45
-
-  # Always fetch the latest join command from SSM
   JOIN_CMD=$(aws ssm get-parameter \
     --name "/k8s/worker/join-command" \
     --with-decryption \
     --region us-west-2 \
     --query "Parameter.Value" \
-    --output text)
+    --output text 2>/dev/null || true)
 
-  # Inject CRI-O socket if not already included
-  if [[ "$JOIN_CMD" != *"--cri-socket="* ]]; then
-    JOIN_CMD="$JOIN_CMD --cri-socket=unix:///var/run/crio/crio.sock"
+  if [[ "$JOIN_CMD" == kubeadm* ]]; then
+    if [[ "$JOIN_CMD" != *"--cri-socket="* ]]; then
+      JOIN_CMD="$JOIN_CMD --cri-socket=unix:///var/run/crio/crio.sock"
+    fi
+
+    echo "🔗 Attempting to join the cluster..."
+    $JOIN_CMD && echo "🎉 Join successful!" && break || echo "❌ Join failed. Retrying..."
+  else
+    echo "⏳ Join command not available yet. Retrying..."
   fi
 
-  echo "Join command: $JOIN_CMD"
-  echo "🔗 Attempting to join the cluster..."
-  $JOIN_CMD && echo "🎉 Join successful!" && break || echo "❌ Join failed. Retrying in 15s..."
   sleep 15
 done

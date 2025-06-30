@@ -33,7 +33,6 @@ echo "[INFO] Running kubeadm init..."
 sudo kubeadm init \
   --apiserver-advertise-address="$PRIVATE_IP" \
   --pod-network-cidr=192.168.0.0/16
-  --cri-socket=unix:///var/run/crio/crio.sock
 
 # Set up kubectl config for root
 sudo mkdir -p /root/.kube
