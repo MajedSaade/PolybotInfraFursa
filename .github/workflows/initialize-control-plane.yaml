@@ -5,12 +5,7 @@ on:
     workflows: ["Provision Infrastructure"]
     types:
       - completed
-    branches:
-      - main
-      - feature/**
-      - dev
   workflow_dispatch:
-
 
 jobs:
   init:
