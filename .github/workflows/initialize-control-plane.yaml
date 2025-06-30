@@ -48,4 +48,4 @@ jobs:
       run: |
         echo "${{ secrets.SSH_PRIVATE_KEY }}" > key.pem
         chmod 600 key.pem
-        ssh -o StrictHostKeyChecking=no -i key.pem ubuntu@$CONTROL_PLANE_IP 'bash -s' < scripts/kubeadm-init.sh
+        ssh -o StrictHostKeyChecking=no -i key.pem ubuntu@${{ env.CONTROL_PLANE_IP }} 'bash -s' < scripts/kubeadm-init.sh
