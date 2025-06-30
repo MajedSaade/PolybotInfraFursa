@@ -36,10 +36,11 @@ jobs:
     - name: Terraform Output (control plane public IP)
       id: tf_output
       run: |
-            terraform output -raw control_plane_public_ip > control_plane_ip.txt
+          terraform output -raw control_plane_public_ip > tf/control_plane_ip.txt
 
     - name: Upload control plane IP artifact
       uses: actions/upload-artifact@v4
       with:
         name: control_plane_ip
-        path: control_plane_ip.txt
+        path: tf/control_plane_ip.txt
+
