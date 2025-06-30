@@ -24,11 +24,15 @@ else
   echo "[INFO] Fetched private IP from AWS metadata: $PRIVATE_IP"
 fi
 
-# Initialize Kubernetes control plane with CRI-O
-echo "[INFO] Running kubeadm init with CRI-O socket..."
+
+echo "[INFO] Sleeping 45s to allow CRI-O to fully initialize..."
+sleep 45
+
+# Initialize Kubernetes control plane
+echo "[INFO] Running kubeadm init..."
 sudo kubeadm init \
   --apiserver-advertise-address="$PRIVATE_IP" \
-  --pod-network-cidr=192.168.0.0/16 \
+  --pod-network-cidr=192.168.0.0/16
   --cri-socket=unix:///var/run/crio/crio.sock
 
 # Set up kubectl config for root
@@ -65,8 +69,8 @@ if ! sudo kubectl --kubeconfig=/etc/kubernetes/admin.conf get pods -n kube-syste
   sudo kubectl --kubeconfig=/etc/kubernetes/admin.conf apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.28.2/manifests/calico.yaml
 fi
 
-# Create dev and prod namespaces
-echo "[INFO] Creating dev and prod namespaces..."
+# ✅ Create dev and prod namespaces BEFORE SSM
+echo "[INFO] Creating dev and prod namespaces directly..."
 cat <<EOF | sudo kubectl --kubeconfig=/etc/kubernetes/admin.conf apply -f -
 apiVersion: v1
 kind: Namespace
@@ -93,4 +97,4 @@ aws ssm put-parameter \
   --overwrite \
   --region us-west-2 || echo "[WARN] Failed to upload to SSM — continuing anyway."
 
-echo "[INFO] ✅ Control plane initialization complete."
+echo "[INFO] Control plane initialization complete."
