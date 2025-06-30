@@ -30,6 +30,10 @@ sudo apt-get update
 sudo apt-get install -y cri-o kubelet kubeadm kubectl
 sudo apt-mark hold kubelet kubeadm kubectl
 
+# ✅ Sleep to give time for kubeadm setup
+echo "[INFO] Sleeping for 45s to ensure kubeadm is available..."
+sleep 45
+
 # Enable and start CRI-O and kubelet
 sudo systemctl enable --now crio.service
 sudo systemctl enable --now kubelet
@@ -48,4 +52,3 @@ if [ ! -f /etc/kubernetes/admin.conf ]; then
 else
   echo "Kubernetes already initialized. Skipping kubeadm init."
 fi
-
