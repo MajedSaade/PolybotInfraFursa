@@ -43,12 +43,8 @@ jobs:
         echo "🔑 Using control plane IP: $IP"
         echo "CONTROL_PLANE_IP=$IP" >> $GITHUB_ENV
 
-    - name: Copy bootstrap manifest to EC2
+    - name: Run kubeadm-init.sh on control plane
       run: |
         echo "${{ secrets.SSH_PRIVATE_KEY }}" > key.pem
         chmod 600 key.pem
-        scp -o StrictHostKeyChecking=no -i key.pem ./scripts/bootstrap-namespaces.yaml ubuntu@$CONTROL_PLANE_IP:/home/ubuntu/
-
-    - name: Run kubeadm-init.sh on control plane
-      run: |
         ssh -o StrictHostKeyChecking=no -i key.pem ubuntu@$CONTROL_PLANE_IP 'bash -s' < scripts/kubeadm-init.sh
