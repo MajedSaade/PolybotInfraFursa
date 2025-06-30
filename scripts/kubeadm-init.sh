@@ -4,7 +4,6 @@ set -e
 echo "[INFO] Waiting for kubeadm to become available..."
 sleep 45
 
-
 echo "[INFO] Starting Kubernetes control plane setup..."
 
 # Exit if already initialized
@@ -27,14 +26,15 @@ fi
 
 # Initialize Kubernetes control plane
 echo "[INFO] Running kubeadm init..."
-kubeadm init \
+sudo kubeadm init \
   --apiserver-advertise-address="$PRIVATE_IP" \
   --pod-network-cidr=192.168.0.0/16
 
 # Set up kubectl config for root
-mkdir -p /root/.kube
-cp -f /etc/kubernetes/admin.conf /root/.kube/config
-chown root:root /root/.kube/config
+sudo mkdir -p /root/.kube
+sudo cp -f /etc/kubernetes/admin.conf /root/.kube/config
+sudo chown root:root /root/.kube/config
+sudo chmod 600 /root/.kube/config
 
 # Wait for default user (UID 1000) and home directory to be ready
 for i in {1..30}; do
@@ -51,22 +51,22 @@ done
 # Set up kubectl config for the default non-root user (e.g. ubuntu)
 if [ -n "$DEFAULT_USER" ] && [ -d "$USER_HOME" ]; then
   echo "[INFO] Setting up kubectl config for $DEFAULT_USER..."
-  mkdir -p "$USER_HOME/.kube"
-  cp -f /etc/kubernetes/admin.conf "$USER_HOME/.kube/config"
-  chown "$DEFAULT_USER:$DEFAULT_USER" "$USER_HOME/.kube/config"
-  sed -i '/export KUBECONFIG/d' "$USER_HOME/.bashrc"
+  sudo mkdir -p "$USER_HOME/.kube"
+  sudo cp -f /etc/kubernetes/admin.conf "$USER_HOME/.kube/config"
+  sudo chown "$DEFAULT_USER:$DEFAULT_USER" "$USER_HOME/.kube/config"
+  sudo chmod 600 "$USER_HOME/.kube/config"
+  sudo sed -i '/export KUBECONFIG/d' "$USER_HOME/.bashrc"
 fi
 
 # Apply Calico CNI if not already applied
 echo "[INFO] Installing Calico CNI (if needed)..."
-if ! kubectl --kubeconfig=/etc/kubernetes/admin.conf get pods -n kube-system 2>/dev/null | grep -q calico; then
-  kubectl --kubeconfig=/etc/kubernetes/admin.conf apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.28.2/manifests/calico.yaml
+if ! sudo kubectl --kubeconfig=/etc/kubernetes/admin.conf get pods -n kube-system 2>/dev/null | grep -q calico; then
+  sudo kubectl --kubeconfig=/etc/kubernetes/admin.conf apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.28.2/manifests/calico.yaml
 fi
 
-
 # ✅ Create dev and prod namespaces BEFORE SSM
-echo "[INFO] Creating dev and prod namespaces directly.."
-cat <<EOF | kubectl --kubeconfig=/etc/kubernetes/admin.conf apply -f -
+echo "[INFO] Creating dev and prod namespaces directly..."
+cat <<EOF | sudo kubectl --kubeconfig=/etc/kubernetes/admin.conf apply -f -
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -78,9 +78,8 @@ metadata:
   name: prod
 EOF
 
-
 # Output the worker join command
-JOIN_CMD=$(kubeadm token create --print-join-command)
+JOIN_CMD=$(sudo kubeadm token create --print-join-command)
 echo "[INFO] Worker join command:"
 echo "$JOIN_CMD"
 
