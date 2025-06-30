@@ -35,7 +35,6 @@ jobs:
 
         echo "☁️ Uploading to S3..."
         aws s3 cp scripts/kubeadm-init.sh s3://majed-tf-backend/scripts/kubeadm-init.sh --region us-west-2
-    
 
     - name: Fetch control plane public IP
       id: get_ip
@@ -46,6 +45,14 @@ jobs:
           --output text)
         echo "CONTROL_PLANE_IP=$IP" >> $GITHUB_ENV
 
-    - name: Run kubeadm-init.sh on control plane
+    - name: Create SSH key file
       run: |
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > key.pem
+        chmod 600 key.pem
+
+    - name: Run kubeadm-init.sh on control plane
+      env:
+        CONTROL_PLANE_IP: ${{ env.CONTROL_PLANE_IP }}
+      run: |
+        echo "🔑 Using control plane IP: $CONTROL_PLANE_IP"
         ssh -o StrictHostKeyChecking=no -i key.pem ubuntu@$CONTROL_PLANE_IP 'bash -s' < scripts/kubeadm-init.sh

@@ -53,7 +53,7 @@ fi
 
 
 # ✅ Create dev and prod namespaces BEFORE SSM
-echo "[INFO] Creating dev and prod namespaces directly.."
+echo "[INFO] Creating dev and prod namespaces directly..."
 cat <<EOF | kubectl --kubeconfig=/etc/kubernetes/admin.conf apply -f -
 apiVersion: v1
 kind: Namespace
