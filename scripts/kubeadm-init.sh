@@ -1,6 +1,10 @@
 #!/bin/bash
 set -e
 
+echo "[INFO] Waiting for kubeadm to become available..."
+sleep 45
+
+
 echo "[INFO] Starting Kubernetes control plane setup..."
 
 # Exit if already initialized
