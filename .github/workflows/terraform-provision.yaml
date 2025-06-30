@@ -32,14 +32,12 @@ jobs:
     - name: Terraform Apply
       run: terraform apply -auto-approve -var-file="region.us-west-2.dev.tfvars"
 
-    - name: Terraform Output (control plane public IP)
-      id: tf_output
+    - name: Store control plane IP in AWS SSM
       run: |
-          terraform output -raw control_plane_public_ip > control_plane_ip.txt
-
-    - name: Upload control plane IP artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: control_plane_ip
-        path: tf/control_plane_ip.txt
-
+        CONTROL_PLANE_IP=$(terraform output -raw control_plane_public_ip)
+        echo "✅ Control plane IP: $CONTROL_PLANE_IP"
+        aws ssm put-parameter \
+          --name "/k8s/control-plane-ip" \
+          --value "$CONTROL_PLANE_IP" \
+          --type String \
+          --overwrite

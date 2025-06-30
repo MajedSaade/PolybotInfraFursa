@@ -36,16 +36,14 @@ jobs:
         echo "☁️ Uploading to S3..."
         aws s3 cp scripts/kubeadm-init.sh s3://majed-tf-backend/scripts/kubeadm-init.sh --region us-west-2
 
-    - name: Download control plane IP artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: control_plane_ip
-        path: .
-
-    - name: Read control plane IP
+    - name: Read control plane IP from AWS SSM
       id: read_ip
       run: |
-        CONTROL_PLANE_IP=$(cat control_plane_ip.txt)
+        CONTROL_PLANE_IP=$(aws ssm get-parameter \
+          --name "/k8s/control-plane-ip" \
+          --query "Parameter.Value" \
+          --output text)
+        echo "✅ IP from SSM: $CONTROL_PLANE_IP"
         echo "CONTROL_PLANE_IP=$CONTROL_PLANE_IP" >> $GITHUB_ENV
 
     - name: Run kubeadm-init.sh on control plane
