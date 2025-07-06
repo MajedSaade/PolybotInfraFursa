@@ -30,7 +30,7 @@ sudo apt-get update
 sudo apt-get install -y cri-o kubelet kubeadm kubectl
 sudo apt-mark hold kubelet kubeadm kubectl
 
-# ✅ Sleep to give time for kubeadm setup
+# Sleep to give time for kubeadm setup
 echo "[INFO] Sleeping for 45s to ensure kubeadm is available..."
 sleep 45
 
