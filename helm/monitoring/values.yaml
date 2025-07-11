@@ -1,0 +1,30 @@
+prometheus:
+  prometheusSpec:
+    serviceMonitorSelectorNilUsesHelmValues: false
+  serviceAccounts:
+    server:
+      create: true
+  nodeExporter:
+    enabled: true
+  alertmanager:
+    enabled: false
+  pushgateway:
+    enabled: false
+  server:
+    global:
+      scrape_interval: 15s
+    service:
+      type: ClusterIP
+
+grafana:
+  adminUser: admin
+  adminPassword: admin123
+  service:
+    type: ClusterIP
+  sidecar:
+    dashboards:
+      enabled: true
+    datasources:
+      enabled: true
+  persistence:
+    enabled: false 
