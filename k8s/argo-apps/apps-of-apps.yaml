@@ -7,7 +7,7 @@ spec:
   project: default
   source:
     repoURL: https://github.com/MajedSaade/PolybotInfraFursa
-    targetRevision: HEAD
+    targetRevision: main  # ← Use explicit branch name
     path: k8s/argo-apps
   destination:
     server: https://kubernetes.default.svc
