@@ -36,12 +36,15 @@ jobs:
           username: ubuntu
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           envs: DISCORD_BOT_TOKEN_DEV,DISCORD_BOT_TOKEN_PROD
+          environment: |
+            DISCORD_BOT_TOKEN_DEV=${{ secrets.DISCORD_BOT_TOKEN_DEV }}
+            DISCORD_BOT_TOKEN_PROD=${{ secrets.DISCORD_BOT_TOKEN_PROD }}
           script: |
             set -e
+
             echo "🔧 Updating system..."
             sudo apt-get update -y
             sudo apt-get install -y git curl
-
 
             echo "🚀 Installing ArgoCD..."
             kubectl create namespace argocd || true
@@ -61,6 +64,9 @@ jobs:
             echo "📦 Creating discord-token secrets in dev and prod..."
             kubectl create namespace dev || true
             kubectl create namespace prod || true
+
+            echo "🔍 Token length (dev): ${#DISCORD_BOT_TOKEN_DEV}"
+            echo "🔍 Token length (prod): ${#DISCORD_BOT_TOKEN_PROD}"
 
             kubectl create secret generic discord-token \
               --from-literal=DISCORD_BOT_TOKEN="${DISCORD_BOT_TOKEN_DEV}" \
