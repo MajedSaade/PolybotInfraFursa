@@ -1,7 +1,7 @@
 # ⛅ Control Plane Security Group
 resource "aws_security_group" "control_plane_sg" {
   name        = "majed-control-plane-sg-${var.env}"
-  description = "Allow SSH, Kubernetes traffic, and Calico BGP/IPIP"
+  description = "Allow SSH and Kubernetes traffic"
   vpc_id      = var.vpc_id
 
   ingress {
@@ -16,28 +16,6 @@ resource "aws_security_group" "control_plane_sg" {
     to_port     = 6443
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    description     = "Calico BGP (TCP 179)"
-    from_port       = 179
-    to_port         = 179
-    protocol        = "tcp"
-    security_groups = [
-      aws_security_group.control_plane_sg.id,
-      aws_security_group.worker_sg.id
-    ]
-  }
-
-  ingress {
-    description     = "Calico IP-in-IP (Protocol 4)"
-    from_port       = 0
-    to_port         = 0
-    protocol        = "4"
-    security_groups = [
-      aws_security_group.control_plane_sg.id,
-      aws_security_group.worker_sg.id
-    ]
   }
 
   egress {
@@ -127,7 +105,7 @@ resource "aws_instance" "control_plane" {
   }
 }
 
-# 🔧 Worker Node Security Group
+# ⛅ Worker Node Security Group
 resource "aws_security_group" "worker_sg" {
   name        = "majed-worker-sg-${var.env}"
   description = "Security group for Kubernetes worker nodes"
@@ -155,28 +133,6 @@ resource "aws_security_group" "worker_sg" {
     to_port     = 22
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    description     = "Calico BGP (TCP 179)"
-    from_port       = 179
-    to_port         = 179
-    protocol        = "tcp"
-    security_groups = [
-      aws_security_group.control_plane_sg.id,
-      aws_security_group.worker_sg.id
-    ]
-  }
-
-  ingress {
-    description     = "Calico IP-in-IP (Protocol 4)"
-    from_port       = 0
-    to_port         = 0
-    protocol        = "4"
-    security_groups = [
-      aws_security_group.control_plane_sg.id,
-      aws_security_group.worker_sg.id
-    ]
   }
 
   egress {
@@ -286,4 +242,45 @@ resource "aws_autoscaling_group" "worker_asg" {
   lifecycle {
     create_before_destroy = true
   }
+}
+
+# 🔐 Calico BGP/IPIP Rules (no cycles)
+resource "aws_security_group_rule" "cp_allow_bgp_from_workers" {
+  type                     = "ingress"
+  from_port                = 179
+  to_port                  = 179
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.control_plane_sg.id
+  source_security_group_id = aws_security_group.worker_sg.id
+  description              = "Allow BGP (TCP 179) from workers"
+}
+
+resource "aws_security_group_rule" "cp_allow_ipip_from_workers" {
+  type                     = "ingress"
+  from_port                = 0
+  to_port                  = 0
+  protocol                 = "4"
+  security_group_id        = aws_security_group.control_plane_sg.id
+  source_security_group_id = aws_security_group.worker_sg.id
+  description              = "Allow IP-in-IP (Protocol 4) from workers"
+}
+
+resource "aws_security_group_rule" "worker_allow_bgp_from_cp" {
+  type                     = "ingress"
+  from_port                = 179
+  to_port                  = 179
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.worker_sg.id
+  source_security_group_id = aws_security_group.control_plane_sg.id
+  description              = "Allow BGP (TCP 179) from control plane"
+}
+
+resource "aws_security_group_rule" "worker_allow_ipip_from_cp" {
+  type                     = "ingress"
+  from_port                = 0
+  to_port                  = 0
+  protocol                 = "4"
+  security_group_id        = aws_security_group.worker_sg.id
+  source_security_group_id = aws_security_group.control_plane_sg.id
+  description              = "Allow IP-in-IP (Protocol 4) from control plane"
 }
