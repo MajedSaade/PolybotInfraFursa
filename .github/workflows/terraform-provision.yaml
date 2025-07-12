@@ -41,3 +41,19 @@ jobs:
           --value "$CONTROL_PLANE_IP" \
           --type String \
           --overwrite
+
+    - name: Upload DEV Discord token to SSM
+      run: |
+        aws ssm put-parameter \
+          --name "/polybot/dev/DISCORD_BOT_TOKEN" \
+          --value "${{ secrets.DISCORD_BOT_TOKEN_DEV }}" \
+          --type "SecureString" \
+          --overwrite
+
+    - name: Upload PROD Discord token to SSM
+      run: |
+        aws ssm put-parameter \
+          --name "/polybot/prod/DISCORD_BOT_TOKEN" \
+          --value "${{ secrets.DISCORD_BOT_TOKEN_PROD }}" \
+          --type "SecureString" \
+          --overwrite
