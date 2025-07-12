@@ -1,0 +1,17 @@
+replicaCount: 1
+
+image:
+  repository: majedsaade/polybot_build_dev
+  tag: "129"
+  pullPolicy: IfNotPresent
+
+service:
+  port: 8080
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
