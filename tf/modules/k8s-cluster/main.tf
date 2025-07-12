@@ -1,7 +1,7 @@
 # ⛅ Control Plane Security Group
 resource "aws_security_group" "control_plane_sg" {
   name        = "majed-control-plane-sg-${var.env}"
-  description = "Allow SSH and Kubernetes traffic"
+  description = "Allow SSH, Kubernetes traffic, and Calico BGP/IPIP"
   vpc_id      = var.vpc_id
 
   ingress {
@@ -18,6 +18,28 @@ resource "aws_security_group" "control_plane_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  ingress {
+    description     = "Calico BGP (TCP 179)"
+    from_port       = 179
+    to_port         = 179
+    protocol        = "tcp"
+    security_groups = [
+      aws_security_group.control_plane_sg.id,
+      aws_security_group.worker_sg.id
+    ]
+  }
+
+  ingress {
+    description     = "Calico IP-in-IP (Protocol 4)"
+    from_port       = 0
+    to_port         = 0
+    protocol        = "4"
+    security_groups = [
+      aws_security_group.control_plane_sg.id,
+      aws_security_group.worker_sg.id
+    ]
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -29,6 +51,7 @@ resource "aws_security_group" "control_plane_sg" {
     Name = "majed-control-plane-sg-${var.env}"
   }
 }
+
 resource "aws_iam_role" "control_plane_role" {
   name = "majed-k8s-control-plane-role-${var.env}"
 
@@ -85,9 +108,6 @@ resource "aws_iam_role_policy_attachment" "attach_s3_read" {
   policy_arn = aws_iam_policy.s3_read_kubeadm_script.arn
 }
 
-
-
-
 # ⛅ Control Plane EC2 Instance
 resource "aws_instance" "control_plane" {
   ami                         = var.ami_id
@@ -97,7 +117,7 @@ resource "aws_instance" "control_plane" {
   vpc_security_group_ids      = [aws_security_group.control_plane_sg.id]
   key_name                    = "Majed_Discord_key"
 
-  iam_instance_profile        = aws_iam_instance_profile.control_plane_profile.name  # ✅ REQUIRED
+  iam_instance_profile        = aws_iam_instance_profile.control_plane_profile.name
 
   user_data = file("${path.module}/scripts/control_plane_userdata.sh")
 
@@ -107,6 +127,7 @@ resource "aws_instance" "control_plane" {
   }
 }
 
+# 🔧 Worker Node Security Group
 resource "aws_security_group" "worker_sg" {
   name        = "majed-worker-sg-${var.env}"
   description = "Security group for Kubernetes worker nodes"
@@ -117,7 +138,7 @@ resource "aws_security_group" "worker_sg" {
     from_port   = 0
     to_port     = 65535
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]  # For production, limit this to your VPC CIDR block
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   ingress {
@@ -125,7 +146,7 @@ resource "aws_security_group" "worker_sg" {
     from_port   = 10250
     to_port     = 10250
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]  # Again, ideally this is restricted in production
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   ingress {
@@ -134,6 +155,28 @@ resource "aws_security_group" "worker_sg" {
     to_port     = 22
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description     = "Calico BGP (TCP 179)"
+    from_port       = 179
+    to_port         = 179
+    protocol        = "tcp"
+    security_groups = [
+      aws_security_group.control_plane_sg.id,
+      aws_security_group.worker_sg.id
+    ]
+  }
+
+  ingress {
+    description     = "Calico IP-in-IP (Protocol 4)"
+    from_port       = 0
+    to_port         = 0
+    protocol        = "4"
+    security_groups = [
+      aws_security_group.control_plane_sg.id,
+      aws_security_group.worker_sg.id
+    ]
   }
 
   egress {
@@ -148,11 +191,7 @@ resource "aws_security_group" "worker_sg" {
   }
 }
 
-
-
-
-# ✅ IAM for Worker Node EC2s (needed before Launch Template)
-
+# ✅ IAM for Worker Node EC2s
 resource "aws_iam_role" "worker_role" {
   name = "majed-k8s-worker-role-${var.env}"
 
@@ -175,22 +214,17 @@ resource "aws_iam_policy" "ssm_read_join_command" {
     Statement = [
       {
         Effect   = "Allow",
-        Action   = [
-          "ssm:GetParameter"
-        ],
+        Action   = ["ssm:GetParameter"],
         Resource = "arn:aws:ssm:${var.region}:${var.account_id}:parameter/k8s/worker/join-command"
       },
       {
         Effect   = "Allow",
-        Action   = [
-          "kms:Decrypt"
-        ],
-        Resource = "*" # Ideally scope this to your KMS key used by SSM (can be refined later)
+        Action   = ["kms:Decrypt"],
+        Resource = "*"
       }
     ]
   })
 }
-
 
 resource "aws_iam_role_policy_attachment" "attach_ssm_read" {
   role       = aws_iam_role.worker_role.name
