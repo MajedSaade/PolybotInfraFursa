@@ -11,7 +11,7 @@ spec:
     path: helm/polybot
     helm:
       valueFiles:
-        - k8s/dev/polybot/values.yaml
+        - ../../../k8s/dev/polybot/values.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: dev
