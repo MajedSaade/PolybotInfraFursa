@@ -1,3 +1,67 @@
+resource "aws_ec2_tag" "cluster_shared_tag" {
+  for_each    = toset(var.vpc_subnet_ids)
+  resource_id = each.value
+  key         = "kubernetes.io/cluster/fursa-k8s"
+  value       = "shared"
+}
+
+resource "aws_ec2_tag" "elb_tag" {
+  for_each    = toset(var.vpc_subnet_ids)
+  resource_id = each.value
+  key         = "kubernetes.io/role/elb"
+  value       = "1"
+}
+
+resource "aws_iam_policy" "alb_controller_policy" {
+  name   = "AWSLoadBalancerControllerIAMPolicy"
+  policy = file("${path.module}/alb-controller-policy.json")
+}
+
+resource "aws_iam_role_policy_attachment" "alb_attach_policy" {
+  role       = aws_iam_role.control_plane_role.name
+  policy_arn = aws_iam_policy.alb_controller_policy.arn
+}
+
+provider "helm" {
+  kubernetes {
+    config_path = "~/.kube/config"
+  }
+}
+
+resource "helm_release" "aws_lb_controller" {
+  name       = "aws-load-balancer-controller"
+  namespace  = "kube-system"
+  repository = "https://aws.github.io/eks-charts"
+  chart      = "aws-load-balancer-controller"
+  version    = "1.8.1"
+
+  set {
+    name  = "clusterName"
+    value = "majed-k8s"
+  }
+
+  set {
+    name  = "region"
+    value = var.region
+  }
+
+  set {
+    name  = "vpcId"
+    value = var.vpc_id
+  }
+
+  set {
+    name  = "serviceAccount.create"
+    value = "true"
+  }
+
+  set {
+    name  = "image.repository"
+    value = "602401143452.dkr.ecr.${var.region}.amazonaws.com/amazon/aws-load-balancer-controller"
+  }
+}
+
+
 # ⛅ Control Plane Security Group
 resource "aws_security_group" "control_plane_sg" {
   name        = "majed-control-plane-sg-${var.env}"
