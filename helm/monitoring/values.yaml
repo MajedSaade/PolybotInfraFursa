@@ -15,6 +15,8 @@ prometheus:
       scrape_interval: 15s
     service:
       type: ClusterIP
+    persistentVolume:
+      enabled: false
 
 grafana:
   adminUser: admin
