@@ -100,7 +100,7 @@ resource "aws_instance" "control_plane" {
   user_data = file("${path.module}/scripts/control_plane_userdata.sh")
 
     root_block_device {
-    volume_size = 40
+    volume_size = 20
     volume_type = "gp3"
   }
 
@@ -214,7 +214,7 @@ resource "aws_launch_template" "worker_lt" {
     device_name = "/dev/xvda"
 
     ebs {
-      volume_size = 40
+      volume_size = 20
       volume_type = "gp3"
     }
   }
