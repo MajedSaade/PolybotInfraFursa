@@ -1,4 +1,4 @@
-#hithereeee
+#hithere
 apiVersion: v2
 name: polybot
 description: A Helm chart for the Polybot Discord service
