@@ -23,8 +23,8 @@ grafana:
     type: ClusterIP
   sidecar:
     dashboards:
-      enabled: true
+      enabled: true       # ✅ Enables loading dashboards from ConfigMaps
     datasources:
-      enabled: true
+      enabled: true       # ✅ Enables loading Prometheus data source config from ConfigMaps
   persistence:
-    enabled: false 
+    enabled: false

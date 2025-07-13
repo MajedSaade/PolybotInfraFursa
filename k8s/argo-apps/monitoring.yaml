@@ -11,7 +11,7 @@ spec:
     path: helm/monitoring
     helm:
       valueFiles:
-        - k8s/dev/monitoring/values.yaml
+        - values.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
