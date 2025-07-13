@@ -1,4 +1,0 @@
-image:
-  repository: majedsaade/yoloservice_build_prod
-  tag: "5"
-  pullPolicy: IfNotPresent
