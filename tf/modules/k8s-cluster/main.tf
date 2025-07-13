@@ -30,27 +30,6 @@ resource "aws_security_group" "control_plane_sg" {
   }
 }
 
-resource "aws_iam_policy" "control_plane_extended_permissions" {
-  name = "ControlPlaneExtendedPermissions-${var.env}"
-  policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [{
-      Effect = "Allow",
-      Action = [
-        "ec2:RunInstances",
-        "ec2:CreateVolume",
-        "ec2:AttachVolume",
-        "ec2:Describe*",
-        "ec2:AssociateIamInstanceProfile",
-        "autoscaling:*",
-        "iam:PassRole",
-        "ssm:PutParameter"
-      ],
-      Resource = "*"
-    }]
-  })
-}
-
 resource "aws_iam_role" "control_plane_role" {
   name = "majed-k8s-control-plane-role-${var.env}"
 
@@ -66,14 +45,45 @@ resource "aws_iam_role" "control_plane_role" {
   })
 }
 
-resource "aws_iam_role_policy_attachment" "control_plane_attach_extended" {
+resource "aws_iam_policy" "ssm_put_join_command" {
+  name = "SSMPutJoinCommand-${var.env}"
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Effect = "Allow",
+      Action = "ssm:PutParameter",
+      Resource = "arn:aws:ssm:${var.region}:${var.account_id}:parameter/k8s/worker/join-command"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "attach_ssm_put" {
   role       = aws_iam_role.control_plane_role.name
-  policy_arn = aws_iam_policy.control_plane_extended_permissions.arn
+  policy_arn = aws_iam_policy.ssm_put_join_command.arn
 }
 
 resource "aws_iam_instance_profile" "control_plane_profile" {
   name = "majed-k8s-control-plane-profile-${var.env}"
   role = aws_iam_role.control_plane_role.name
+}
+
+resource "aws_iam_policy" "s3_read_kubeadm_script" {
+  name = "S3ReadKubeadmScript-${var.env}"
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = ["s3:GetObject"],
+        Resource = "arn:aws:s3:::majed-tf-backend/scripts/kubeadm-init.sh"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "attach_s3_read" {
+  role       = aws_iam_role.control_plane_role.name
+  policy_arn = aws_iam_policy.s3_read_kubeadm_script.arn
 }
 
 # ⛅ Control Plane EC2 Instance
@@ -89,8 +99,8 @@ resource "aws_instance" "control_plane" {
 
   user_data = file("${path.module}/scripts/control_plane_userdata.sh")
 
-  root_block_device {
-    volume_size = 40
+    root_block_device {
+    volume_size = 20
     volume_type = "gp3"
   }
 
@@ -142,31 +152,7 @@ resource "aws_security_group" "worker_sg" {
   }
 }
 
-resource "aws_iam_policy" "worker_extended_permissions" {
-  name = "WorkerExtendedPermissions-${var.env}"
-  policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Effect   = "Allow",
-        Action   = [
-          "ssm:GetParameter",
-          "ssm:GetParameters",
-          "ssm:GetParameterHistory",
-          "ec2:Describe*",
-          "iam:PassRole"
-        ],
-        Resource = "*"
-      },
-      {
-        Effect   = "Allow",
-        Action   = ["kms:Decrypt"],
-        Resource = "*"
-      }
-    ]
-  })
-}
-
+# ✅ IAM for Worker Node EC2s
 resource "aws_iam_role" "worker_role" {
   name = "majed-k8s-worker-role-${var.env}"
 
@@ -182,9 +168,28 @@ resource "aws_iam_role" "worker_role" {
   })
 }
 
-resource "aws_iam_role_policy_attachment" "attach_worker_permissions" {
+resource "aws_iam_policy" "ssm_read_join_command" {
+  name   = "SSMReadJoinCommandPolicy-${var.env}"
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect   = "Allow",
+        Action   = ["ssm:GetParameter"],
+        Resource = "arn:aws:ssm:${var.region}:${var.account_id}:parameter/k8s/worker/join-command"
+      },
+      {
+        Effect   = "Allow",
+        Action   = ["kms:Decrypt"],
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "attach_ssm_read" {
   role       = aws_iam_role.worker_role.name
-  policy_arn = aws_iam_policy.worker_extended_permissions.arn
+  policy_arn = aws_iam_policy.ssm_read_join_command.arn
 }
 
 resource "aws_iam_instance_profile" "worker_profile" {
@@ -205,14 +210,15 @@ resource "aws_launch_template" "worker_lt" {
 
   user_data = base64encode(file("${path.module}/scripts/worker-user-data.sh"))
 
-  block_device_mappings {
+   block_device_mappings {
     device_name = "/dev/xvda"
 
     ebs {
-      volume_size = 40
+      volume_size = 20
       volume_type = "gp3"
     }
   }
+
 
   network_interfaces {
     associate_public_ip_address = true
@@ -294,7 +300,6 @@ resource "aws_security_group_rule" "worker_allow_ipip_from_cp" {
   description              = "Allow IP-in-IP (Protocol 4) from control plane"
 }
 
-# 🔐 External Secrets SSM Access
 resource "aws_iam_policy" "eso_ssm_access" {
   name = "ESOSecretAccess-${var.env}"
   policy = jsonencode({
@@ -302,11 +307,7 @@ resource "aws_iam_policy" "eso_ssm_access" {
     Statement = [
       {
         Effect = "Allow",
-        Action = [
-          "ssm:GetParameter",
-          "ssm:GetParameters",
-          "ssm:GetParameterHistory"
-        ],
+        Action = ["ssm:GetParameter", "ssm:GetParameters", "ssm:GetParameterHistory"],
         Resource = "arn:aws:ssm:${var.region}:${var.account_id}:parameter/polybot/${var.env}/DISCORD_BOT_TOKEN"
       }
     ]

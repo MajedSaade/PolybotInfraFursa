@@ -1,6 +1,0 @@
-apiVersion: v2
-name: yolo
-description: A Helm chart for the YOLO microservice that performs object detection
-type: application
-version: 0.1.0        # Chart version
-appVersion: "1.0.0"   # Your application version (e.g., Docker image tag)
