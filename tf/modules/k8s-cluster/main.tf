@@ -1,14 +1,14 @@
 # Subnet tags for AWS Load Balancer Controller
 resource "aws_ec2_tag" "cluster_shared_tag" {
-  for_each    = toset(var.vpc_subnet_ids)
-  resource_id = each.value
+  count       = length(var.vpc_subnet_ids)
+  resource_id = var.vpc_subnet_ids[count.index]
   key         = "kubernetes.io/cluster/fursa-k8s"
   value       = "shared"
 }
 
 resource "aws_ec2_tag" "elb_tag" {
-  for_each    = toset(var.vpc_subnet_ids)
-  resource_id = each.value
+  count       = length(var.vpc_subnet_ids)
+  resource_id = var.vpc_subnet_ids[count.index]
   key         = "kubernetes.io/role/elb"
   value       = "1"
 }
