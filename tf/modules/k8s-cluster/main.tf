@@ -203,30 +203,19 @@ resource "helm_release" "aws_lb_controller" {
   chart      = "aws-load-balancer-controller"
   version    = "1.8.1"
 
-  set {
-    name  = "clusterName"
-    value = "majed-k8s"
-  }
-
-  set {
-    name  = "region"
-    value = var.region
-  }
-
-  set {
-    name  = "vpcId"
-    value = var.vpc_id
-  }
-
-  set {
-    name  = "serviceAccount.create"
-    value = "true"
-  }
-
-  set {
-    name  = "image.repository"
-    value = "602401143452.dkr.ecr.${var.region}.amazonaws.com/amazon/aws-load-balancer-controller"
-  }
+  values = [
+    yamlencode({
+      clusterName = "majed-k8s"
+      region      = var.region
+      vpcId       = var.vpc_id
+      serviceAccount = {
+        create = true
+      }
+      image = {
+        repository = "602401143452.dkr.ecr.${var.region}.amazonaws.com/amazon/aws-load-balancer-controller"
+      }
+    })
+  ]
 }
 
 # ⛅ Control Plane Security Group
