@@ -184,40 +184,6 @@ resource "aws_iam_policy" "alb_controller_policy" {
   })
 }
 
-resource "aws_iam_role_policy_attachment" "alb_attach_policy" {
-  role       = aws_iam_role.control_plane_role.name
-  policy_arn = aws_iam_policy.alb_controller_policy.arn
-}
-
-# Fixed Helm provider configuration
-provider "helm" {
-  kubernetes = {
-    config_path = "~/.kube/config"
-  }
-}
-
-resource "helm_release" "aws_lb_controller" {
-  name       = "aws-load-balancer-controller"
-  namespace  = "kube-system"
-  repository = "https://aws.github.io/eks-charts"
-  chart      = "aws-load-balancer-controller"
-  version    = "1.8.1"
-
-  values = [
-    yamlencode({
-      clusterName = "majed-k8s"
-      region      = var.region
-      vpcId       = var.vpc_id
-      serviceAccount = {
-        create = true
-      }
-      image = {
-        repository = "602401143452.dkr.ecr.${var.region}.amazonaws.com/amazon/aws-load-balancer-controller"
-      }
-    })
-  ]
-}
-
 # ⛅ Control Plane Security Group
 resource "aws_security_group" "control_plane_sg" {
   name        = "majed-control-plane-sg-${var.env}"
