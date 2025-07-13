@@ -49,13 +49,25 @@ resource "aws_iam_policy" "ssm_put_join_command" {
   name = "SSMPutJoinCommand-${var.env}"
   policy = jsonencode({
     Version = "2012-10-17",
-    Statement = [{
-      Effect = "Allow",
-      Action = "ssm:PutParameter",
-      Resource = "arn:aws:ssm:${var.region}:${var.account_id}:parameter/k8s/worker/join-command"
-    }]
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = "ssm:PutParameter",
+        Resource = "arn:aws:ssm:${var.region}:${var.account_id}:parameter/k8s/worker/join-command"
+      },
+      {
+        Effect = "Allow",
+        Action = [
+          "ec2:Describe*",
+          "ec2:CreateTags",
+          "elasticloadbalancing:*"
+        ],
+        Resource = "*"
+      }
+    ]
   })
 }
+
 
 resource "aws_iam_role_policy_attachment" "attach_ssm_put" {
   role       = aws_iam_role.control_plane_role.name
@@ -84,29 +96,6 @@ resource "aws_iam_policy" "s3_read_kubeadm_script" {
 resource "aws_iam_role_policy_attachment" "attach_s3_read" {
   role       = aws_iam_role.control_plane_role.name
   policy_arn = aws_iam_policy.s3_read_kubeadm_script.arn
-}
-
-resource "aws_iam_policy" "control_plane_elb_policy" {
-  name = "ELBPermissions-${var.env}"
-  policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Effect: "Allow",
-        Action: [
-          "ec2:Describe*",
-          "ec2:CreateTags",
-          "elasticloadbalancing:*"
-        ],
-        Resource: "*"
-      }
-    ]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "attach_elb_permissions" {
-  role       = aws_iam_role.control_plane_role.name
-  policy_arn = aws_iam_policy.control_plane_elb_policy.arn
 }
 
 
