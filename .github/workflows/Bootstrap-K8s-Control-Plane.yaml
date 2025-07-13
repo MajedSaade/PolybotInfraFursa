@@ -65,6 +65,7 @@ jobs:
             echo "📦 Creating discord-token secrets in dev and prod..."
             kubectl create namespace dev || true
             kubectl create namespace prod || true
+            kubectl create namespace monitoring || true
 
             echo "🔍 Token length (dev): ${#DISCORD_BOT_TOKEN_DEV}"
             echo "🔍 Token length (prod): ${#DISCORD_BOT_TOKEN_PROD}"

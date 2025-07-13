@@ -1,0 +1,4 @@
+image:
+  repository: majedsaade/yoloservice_build_dev
+  tag: "29"
+  pullPolicy: IfNotPresent
