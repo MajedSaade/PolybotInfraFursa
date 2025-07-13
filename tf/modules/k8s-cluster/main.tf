@@ -99,6 +99,11 @@ resource "aws_instance" "control_plane" {
 
   user_data = file("${path.module}/scripts/control_plane_userdata.sh")
 
+    root_block_device {
+    volume_size = 40
+    volume_type = "gp3"
+  }
+
   tags = {
     Name = "Majed-control-plane-${var.env}"
     Role = "control-plane"
@@ -204,6 +209,16 @@ resource "aws_launch_template" "worker_lt" {
   }
 
   user_data = base64encode(file("${path.module}/scripts/worker-user-data.sh"))
+
+   block_device_mappings {
+    device_name = "/dev/xvda"
+
+    ebs {
+      volume_size = 40
+      volume_type = "gp3"
+    }
+  }
+
 
   network_interfaces {
     associate_public_ip_address = true
