@@ -27,7 +27,7 @@ variable "worker_ami_id" {
 variable "worker_instance_type" {
   type        = string
   description = "EC2 instance type for worker nodes"
-  default     = "t3.medium"
+  default     = "t3.large"
 }
 
 variable "key_name" {

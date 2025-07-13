@@ -89,7 +89,7 @@ resource "aws_iam_role_policy_attachment" "attach_s3_read" {
 # ⛅ Control Plane EC2 Instance
 resource "aws_instance" "control_plane" {
   ami                         = var.ami_id
-  instance_type               = "t3.medium"
+  instance_type               = "t3.large"
   subnet_id                   = var.public_subnet
   associate_public_ip_address = true
   vpc_security_group_ids      = [aws_security_group.control_plane_sg.id]
