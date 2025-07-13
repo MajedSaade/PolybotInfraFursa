@@ -86,6 +86,30 @@ resource "aws_iam_role_policy_attachment" "attach_s3_read" {
   policy_arn = aws_iam_policy.s3_read_kubeadm_script.arn
 }
 
+resource "aws_iam_policy" "control_plane_elb_policy" {
+  name = "ELBPermissions-${var.env}"
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect: "Allow",
+        Action: [
+          "ec2:Describe*",
+          "ec2:CreateTags",
+          "elasticloadbalancing:*"
+        ],
+        Resource: "*"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "attach_elb_permissions" {
+  role       = aws_iam_role.control_plane_role.name
+  policy_arn = aws_iam_policy.control_plane_elb_policy.arn
+}
+
+
 # ⛅ Control Plane EC2 Instance
 resource "aws_instance" "control_plane" {
   ami                         = var.ami_id
