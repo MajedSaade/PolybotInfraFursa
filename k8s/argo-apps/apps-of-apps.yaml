@@ -3,11 +3,13 @@ kind: Application
 metadata:
   name: apps-of-apps
   namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"  # optional: controls sync order in app-of-apps
 spec:
   project: default
   source:
     repoURL: https://github.com/MajedSaade/PolybotInfraFursa
-    targetRevision: main  # ← Use explicit branch name
+    targetRevision: main
     path: k8s/argo-apps
   destination:
     server: https://kubernetes.default.svc
@@ -16,3 +18,8 @@ spec:
     automated:
       prune: true
       selfHeal: true
+    retry:
+      limit: 5
+      backoff:
+        duration: 20s
+        factor: 2
