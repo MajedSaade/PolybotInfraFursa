@@ -1,3 +1,4 @@
+# Subnet tags for AWS Load Balancer Controller
 resource "aws_ec2_tag" "cluster_shared_tag" {
   for_each    = toset(var.vpc_subnet_ids)
   resource_id = each.value
@@ -12,9 +13,175 @@ resource "aws_ec2_tag" "elb_tag" {
   value       = "1"
 }
 
+# AWS Load Balancer Controller IAM Policy (inline instead of file)
 resource "aws_iam_policy" "alb_controller_policy" {
-  name   = "AWSLoadBalancerControllerIAMPolicy"
-  policy = file("${path.module}/alb-controller-policy.json")
+  name = "AWSLoadBalancerControllerIAMPolicy-${var.env}"
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "iam:CreateServiceLinkedRole",
+          "ec2:DescribeAccountAttributes",
+          "ec2:DescribeAddresses",
+          "ec2:DescribeAvailabilityZones",
+          "ec2:DescribeInternetGateways",
+          "ec2:DescribeVpcs",
+          "ec2:DescribeSubnets",
+          "ec2:DescribeSecurityGroups",
+          "ec2:DescribeInstances",
+          "ec2:DescribeNetworkInterfaces",
+          "ec2:DescribeTags",
+          "ec2:GetCoipPoolUsage",
+          "ec2:DescribeCoipPools",
+          "elasticloadbalancing:DescribeLoadBalancers",
+          "elasticloadbalancing:DescribeLoadBalancerAttributes",
+          "elasticloadbalancing:DescribeListeners",
+          "elasticloadbalancing:DescribeListenerCertificates",
+          "elasticloadbalancing:DescribeSSLPolicies",
+          "elasticloadbalancing:DescribeRules",
+          "elasticloadbalancing:DescribeTargetGroups",
+          "elasticloadbalancing:DescribeTargetGroupAttributes",
+          "elasticloadbalancing:DescribeTargetHealth",
+          "elasticloadbalancing:DescribeTags"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "cognito-idp:DescribeUserPoolClient",
+          "acm:ListCertificates",
+          "acm:DescribeCertificate",
+          "iam:ListServerCertificates",
+          "iam:GetServerCertificate",
+          "waf-regional:GetWebACL",
+          "waf-regional:GetWebACLForResource",
+          "waf-regional:AssociateWebACL",
+          "waf-regional:DisassociateWebACL",
+          "wafv2:GetWebACL",
+          "wafv2:GetWebACLForResource",
+          "wafv2:AssociateWebACL",
+          "wafv2:DisassociateWebACL",
+          "shield:DescribeProtection",
+          "shield:GetSubscriptionState",
+          "shield:DescribeSubscription",
+          "shield:DescribeEmergencyContactSettings"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ec2:AuthorizeSecurityGroupIngress",
+          "ec2:RevokeSecurityGroupIngress"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ec2:CreateSecurityGroup"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ec2:CreateTags"
+        ]
+        Resource = "arn:aws:ec2:*:*:security-group/*"
+        Condition = {
+          StringEquals = {
+            "ec2:CreateAction" = "CreateSecurityGroup"
+          }
+          Null = {
+            "aws:RequestedRegion" = "false"
+          }
+        }
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "elasticloadbalancing:CreateLoadBalancer",
+          "elasticloadbalancing:CreateTargetGroup"
+        ]
+        Resource = "*"
+        Condition = {
+          Null = {
+            "aws:RequestedRegion" = "false"
+          }
+        }
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "elasticloadbalancing:CreateListener",
+          "elasticloadbalancing:DeleteListener",
+          "elasticloadbalancing:CreateRule",
+          "elasticloadbalancing:DeleteRule"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "elasticloadbalancing:AddTags",
+          "elasticloadbalancing:RemoveTags"
+        ]
+        Resource = [
+          "arn:aws:elasticloadbalancing:*:*:targetgroup/*/*",
+          "arn:aws:elasticloadbalancing:*:*:loadbalancer/net/*/*",
+          "arn:aws:elasticloadbalancing:*:*:loadbalancer/app/*/*"
+        ]
+        Condition = {
+          Null = {
+            "aws:RequestedRegion" = "false"
+            "aws:ResourceTag/elbv2.k8s.aws/cluster" = "false"
+          }
+        }
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "elasticloadbalancing:ModifyLoadBalancerAttributes",
+          "elasticloadbalancing:SetIpAddressType",
+          "elasticloadbalancing:SetSecurityGroups",
+          "elasticloadbalancing:SetSubnets",
+          "elasticloadbalancing:DeleteLoadBalancer",
+          "elasticloadbalancing:ModifyTargetGroup",
+          "elasticloadbalancing:ModifyTargetGroupAttributes",
+          "elasticloadbalancing:DeleteTargetGroup"
+        ]
+        Resource = "*"
+        Condition = {
+          Null = {
+            "aws:ResourceTag/elbv2.k8s.aws/cluster" = "false"
+          }
+        }
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "elasticloadbalancing:RegisterTargets",
+          "elasticloadbalancing:DeregisterTargets"
+        ]
+        Resource = "arn:aws:elasticloadbalancing:*:*:targetgroup/*/*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "elasticloadbalancing:SetWebAcl",
+          "elasticloadbalancing:ModifyListener",
+          "elasticloadbalancing:AddListenerCertificates",
+          "elasticloadbalancing:RemoveListenerCertificates",
+          "elasticloadbalancing:ModifyRule"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
 }
 
 resource "aws_iam_role_policy_attachment" "alb_attach_policy" {
@@ -22,8 +189,9 @@ resource "aws_iam_role_policy_attachment" "alb_attach_policy" {
   policy_arn = aws_iam_policy.alb_controller_policy.arn
 }
 
+# Fixed Helm provider configuration
 provider "helm" {
-  kubernetes {
+  kubernetes = {
     config_path = "~/.kube/config"
   }
 }
@@ -60,7 +228,6 @@ resource "helm_release" "aws_lb_controller" {
     value = "602401143452.dkr.ecr.${var.region}.amazonaws.com/amazon/aws-load-balancer-controller"
   }
 }
-
 
 # ⛅ Control Plane Security Group
 resource "aws_security_group" "control_plane_sg" {
@@ -132,7 +299,6 @@ resource "aws_iam_policy" "ssm_put_join_command" {
   })
 }
 
-
 resource "aws_iam_role_policy_attachment" "attach_ssm_put" {
   role       = aws_iam_role.control_plane_role.name
   policy_arn = aws_iam_policy.ssm_put_join_command.arn
@@ -162,7 +328,6 @@ resource "aws_iam_role_policy_attachment" "attach_s3_read" {
   policy_arn = aws_iam_policy.s3_read_kubeadm_script.arn
 }
 
-
 # ⛅ Control Plane EC2 Instance
 resource "aws_instance" "control_plane" {
   ami                         = var.ami_id
@@ -172,11 +337,11 @@ resource "aws_instance" "control_plane" {
   vpc_security_group_ids      = [aws_security_group.control_plane_sg.id]
   key_name                    = "Majed_Discord_key"
 
-  iam_instance_profile        = aws_iam_instance_profile.control_plane_profile.name
+  iam_instance_profile = aws_iam_instance_profile.control_plane_profile.name
 
   user_data = file("${path.module}/scripts/control_plane_userdata.sh")
 
-    root_block_device {
+  root_block_device {
     volume_size = 20
     volume_type = "gp3"
   }
@@ -246,7 +411,7 @@ resource "aws_iam_role" "worker_role" {
 }
 
 resource "aws_iam_policy" "ssm_read_join_command" {
-  name   = "SSMReadJoinCommandPolicy-${var.env}"
+  name = "SSMReadJoinCommandPolicy-${var.env}"
   policy = jsonencode({
     Version = "2012-10-17",
     Statement = [
@@ -287,7 +452,7 @@ resource "aws_launch_template" "worker_lt" {
 
   user_data = base64encode(file("${path.module}/scripts/worker-user-data.sh"))
 
-   block_device_mappings {
+  block_device_mappings {
     device_name = "/dev/xvda"
 
     ebs {
@@ -295,7 +460,6 @@ resource "aws_launch_template" "worker_lt" {
       volume_type = "gp3"
     }
   }
-
 
   network_interfaces {
     associate_public_ip_address = true
