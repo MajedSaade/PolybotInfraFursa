@@ -1,17 +1,21 @@
-# Subnet tags for AWS Load Balancer Controller
-resource "aws_ec2_tag" "cluster_shared_tag" {
-  count       = length(var.vpc_subnet_ids)
-  resource_id = var.vpc_subnet_ids[count.index]
-  key         = "kubernetes.io/cluster/majed-k8s"
-  value       = "shared"
-}
+# ✅ Tag public subnets for LoadBalancer
+resource "aws_ec2_tag" "public_subnet_tags" {
+  for_each = toset(var.public_subnet_ids)
 
-resource "aws_ec2_tag" "elb_tag" {
-  count       = length(var.vpc_subnet_ids)
-  resource_id = var.vpc_subnet_ids[count.index]
+  resource_id = each.value
   key         = "kubernetes.io/role/elb"
   value       = "1"
 }
+
+# ✅ Tag all subnets (public + private) for cluster discovery
+resource "aws_ec2_tag" "cluster_tag" {
+  for_each = toset(concat(var.public_subnet_ids, var.private_subnet_ids))
+
+  resource_id = each.value
+  key         = "kubernetes.io/cluster/${var.cluster_name}"
+  value       = "shared"
+}
+
 
 
 # ⛅ Control Plane Security Group

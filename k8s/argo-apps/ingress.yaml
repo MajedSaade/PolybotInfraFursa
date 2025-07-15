@@ -16,12 +16,12 @@ spec:
           service:
             type: LoadBalancer
             annotations:
-              service.beta.kubernetes.io/aws-load-balancer-type: "nlb"  # ✅ Correct for NLB
+              service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
               service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: "ip"
-              external-dns.alpha.kubernetes.io/hostname: majed-polybot.fursa.click.
+              external-dns.alpha.kubernetes.io/hostname: majed-polybot.fursa.click
           ingressClassResource:
-            name: nginx
             enabled: true
+            name: nginx
           metrics:
             enabled: true
           admissionWebhooks:
@@ -33,3 +33,9 @@ spec:
     automated:
       prune: true
       selfHeal: true
+    retry:
+      limit: 5
+      backoff:
+        duration: 20s
+        factor: 2
+        maxDuration: 3m

@@ -57,4 +57,15 @@ variable "subdomain" {
   description = "Subdomain to use for Polybot ingress"
   type        = string
 }
+variable "public_subnet_ids" {
+  type = list(string)
+}
+
+variable "private_subnet_ids" {
+  type = list(string)
+}
+
+variable "cluster_name" {
+  type = string
+}
 
