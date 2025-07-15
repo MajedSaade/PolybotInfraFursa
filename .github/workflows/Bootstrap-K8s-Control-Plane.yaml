@@ -66,7 +66,6 @@ jobs:
             kubectl create namespace dev || true
             kubectl create namespace prod || true
             kubectl create namespace monitoring || true
-            
 
             echo "🔍 Token length (dev): ${#DISCORD_BOT_TOKEN_DEV}"
             echo "🔍 Token length (prod): ${#DISCORD_BOT_TOKEN_PROD}"
@@ -78,11 +77,48 @@ jobs:
             kubectl create secret generic discord-token \
               --from-literal=DISCORD_BOT_TOKEN="${DISCORD_BOT_TOKEN_PROD}" \
               -n prod --dry-run=client -o yaml | kubectl apply -f -
-            
+
             echo "⏳ Sleeping 15 seconds to allow ArgoCD services to stabilize..."
             sleep 15
-            
+
             echo "📡 Applying apps-of-apps manifest..."
             kubectl apply -f ~/PolybotInfraFursa/k8s/argo-apps/apps-of-apps.yaml
 
-            echo "✅ Bootstrap complete. Access ArgoCD via port-forward or configure Ingress."
+            echo "⏳ Waiting for ingress-nginx LoadBalancer to be ready..."
+            for i in {1..20}; do
+              INGRESS_HOST=$(kubectl get svc ingress-nginx-controller -n ingress-nginx -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || true)
+              if [[ -n "$INGRESS_HOST" ]]; then
+                echo "✅ Found LoadBalancer hostname: $INGRESS_HOST"
+                break
+              fi
+              echo "⌛ Still waiting... ($i)"
+              sleep 15
+            done
+
+            if [[ -z "$INGRESS_HOST" ]]; then
+              echo "❌ Failed to get Ingress hostname"
+              exit 1
+            fi
+
+            ZONE_ID=$(aws route53 list-hosted-zones-by-name --dns-name "majed-k8s.click" --output json \
+              | jq -r '.HostedZones[0].Id' | sed 's|/hostedzone/||')
+
+            echo "✅ Route53 Zone ID: $ZONE_ID"
+
+            aws route53 change-resource-record-sets --hosted-zone-id "$ZONE_ID" --change-batch "{
+              \"Comment\": \"Update ingress record\",
+              \"Changes\": [{
+                \"Action\": \"UPSERT\",
+                \"ResourceRecordSet\": {
+                  \"Name\": \"polybot.majed-k8s.click.\",
+                  \"Type\": \"A\",
+                  \"AliasTarget\": {
+                    \"HostedZoneId\": \"Z32O12XQLNTSW2\",
+                    \"DNSName\": \"$INGRESS_HOST\",
+                    \"EvaluateTargetHealth\": false
+                  }
+                }
+              }]
+            }"
+
+            echo "✅ Bootstrap complete. ArgoCD and Ingress are ready."

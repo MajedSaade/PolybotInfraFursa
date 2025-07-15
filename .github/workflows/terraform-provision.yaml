@@ -42,6 +42,16 @@ jobs:
           --type String \
           --overwrite
 
+    - name: Store VPC ID in AWS SSM
+      run: |
+        VPC_ID=$(terraform output -raw vpc_id)
+        echo "✅ VPC ID: $VPC_ID"
+        aws ssm put-parameter \
+          --name "/k8s/vpc-id" \
+          --value "$VPC_ID" \
+          --type String \
+          --overwrite
+
     - name: Upload DEV Discord token to SSM
       run: |
         aws ssm put-parameter \

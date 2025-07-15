@@ -6,9 +6,26 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/MajedSaade/PolybotInfraFursa
-    targetRevision: HEAD
-    path: helm/ingress-nginx
+    repoURL: https://kubernetes.github.io/ingress-nginx
+    chart: ingress-nginx
+    targetRevision: 4.10.1  # Pick a stable version
+    helm:
+      values: |
+        controller:
+          replicaCount: 2
+          service:
+            type: LoadBalancer
+            annotations:
+              service.beta.kubernetes.io/aws-load-balancer-type: "external"
+              service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: "ip"
+              external-dns.alpha.kubernetes.io/hostname: polybot.majed-k8s.click
+          ingressClassResource:
+            name: nginx
+            enabled: true
+          metrics:
+            enabled: true
+          admissionWebhooks:
+            enabled: true
   destination:
     server: https://kubernetes.default.svc
     namespace: ingress-nginx
