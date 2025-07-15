@@ -48,13 +48,9 @@ variable "account_id" {
   type        = string
   description = "AWS Account ID used in IAM policy to access SSM parameter"
 }
-variable "subdomain" {
-  description = "Subdomain to create in Route53"
-  default     = "polybot"
-}
 
 variable "domain_name" {
-  description = "Base domain name (hosted in Route53)"
-  default     = "majed-k8s.click"
+  description = "The Route53 hosted domain name (e.g., majed-k8s.click)"
+  type        = string
 }
 
