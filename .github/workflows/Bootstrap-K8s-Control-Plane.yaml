@@ -54,6 +54,10 @@ jobs:
             echo "🚀 Installing ArgoCD..."
             kubectl create namespace argocd || true
             kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+            
+            kubectl apply -f ~/PolybotInfraFursa/k8s/argo-apps/apps-of-apps.yaml -n argocd
+            sleep 30
+            
 
             echo "⏳ Waiting for ArgoCD to be ready..."
             kubectl wait --for=condition=available --timeout=300s deployment/argocd-server -n argocd
@@ -83,7 +87,7 @@ jobs:
             sleep 15
 
             echo "⏳ Waiting for ingress-nginx LoadBalancer to be ready..."
-            for i in {1..20}; do
+            for i in {1..10}; do
               INGRESS_HOST=$(kubectl get svc ingress-nginx-controller -n ingress-nginx -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || true)
               if [[ -n "$INGRESS_HOST" ]]; then
                 echo "✅ Found LoadBalancer hostname: $INGRESS_HOST"
