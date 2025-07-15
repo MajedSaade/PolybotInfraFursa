@@ -66,6 +66,7 @@ jobs:
             kubectl create namespace dev || true
             kubectl create namespace prod || true
             kubectl create namespace monitoring || true
+            kubectl create namespace ingress-nginx || true
 
             echo "🔍 Token length (dev): ${#DISCORD_BOT_TOKEN_DEV}"
             echo "🔍 Token length (prod): ${#DISCORD_BOT_TOKEN_PROD}"
