@@ -81,9 +81,6 @@ jobs:
             echo "⏳ Sleeping 15 seconds to allow ArgoCD services to stabilize..."
             sleep 15
 
-            echo "📡 Applying apps-of-apps manifest..."
-            kubectl apply -f ~/PolybotInfraFursa/k8s/argo-apps/apps-of-apps.yaml
-
             echo "⏳ Waiting for ingress-nginx LoadBalancer to be ready..."
             for i in {1..20}; do
               INGRESS_HOST=$(kubectl get svc ingress-nginx-controller -n ingress-nginx -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || true)
@@ -100,7 +97,7 @@ jobs:
               exit 1
             fi
 
-            ZONE_ID=$(aws route53 list-hosted-zones-by-name --dns-name "majed-k8s.click" --output json \
+            ZONE_ID=$(aws route53 list-hosted-zones-by-name --dns-name "fursa.click" --output json \
               | jq -r '.HostedZones[0].Id' | sed 's|/hostedzone/||')
 
             echo "✅ Route53 Zone ID: $ZONE_ID"
@@ -110,15 +107,12 @@ jobs:
               \"Changes\": [{
                 \"Action\": \"UPSERT\",
                 \"ResourceRecordSet\": {
-                  \"Name\": \"polybot.majed-k8s.click.\",
+                  \"Name\": \"majed-k8s.fursa.click.\",
                   \"Type\": \"A\",
                   \"AliasTarget\": {
                     \"HostedZoneId\": \"Z32O12XQLNTSW2\",
                     \"DNSName\": \"$INGRESS_HOST\",
                     \"EvaluateTargetHealth\": false
                   }
-                }
-              }]
-            }"
-
-            echo "✅ Bootstrap complete. ArgoCD and Ingress are ready."
+                }]
+            }
