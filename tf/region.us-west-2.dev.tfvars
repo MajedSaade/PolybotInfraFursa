@@ -13,5 +13,3 @@ worker_ami_id         = "ami-05f991c49d264708f"    # Same or different AMI from 
 worker_instance_type  = "t3.large"                # Optional (already has default)
 instance_profile_name = "k8s-worker-profile-dev"   # Must match name from IAM instance profile
 vpc_subnet_ids        = ["subnet-xxx1", "subnet-xxx2"]  # Real subnet IDs matching private_subnets
-subdomain   = "polybot"
-domain_name = "majed-k8s.click"
