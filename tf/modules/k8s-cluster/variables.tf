@@ -53,4 +53,8 @@ variable "domain_name" {
   description = "The Route53 hosted domain name (e.g., majed-k8s.click)"
   type        = string
 }
+variable "subdomain" {
+  description = "Subdomain to use for Polybot ingress"
+  type        = string
+}
 

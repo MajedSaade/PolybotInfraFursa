@@ -344,3 +344,14 @@ data "aws_route53_zone" "primary" {
   name         = var.domain_name
   private_zone = false
 }
+resource "aws_route53_record" "polybot" {
+  zone_id = data.aws_route53_zone.primary.zone_id
+  name    = "${var.subdomain}.${var.domain_name}"
+  type    = "A"
+
+  alias {
+    name                   = "REPLACE_ME.elb.us-west-2.amazonaws.com" # <- Replace after Ingress is created
+    zone_id                = "Z32O12XQLNTSW2"                         # <- NLB zone ID (for us-west-2)
+    evaluate_target_health = false
+  }
+}

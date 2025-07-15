@@ -14,3 +14,7 @@ output "hosted_zone_id" {
   value       = data.aws_route53_zone.primary.zone_id
   description = "The ID of the hosted zone"
 }
+output "polybot_dns" {
+  description = "DNS name for Polybot Ingress"
+  value       = aws_route53_record.polybot.fqdn
+}
