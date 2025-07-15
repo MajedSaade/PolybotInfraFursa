@@ -57,4 +57,5 @@ module "k8s_cluster" {
   worker_ami_id       = var.worker_ami_id
   instance_profile_name = "k8s-worker-profile-${var.env}"
   account_id          = var.account_id
+  domain_name               = var.domain_name
 }
