@@ -73,11 +73,3 @@ variable "account_id" {
   type        = string
   description = "AWS account ID used in IAM policy"
 }
-variable "domain_name" {
-  description = "The Route53 domain name (e.g., majed-k8s.click)"
-  type        = string
-}
-variable "subdomain" {
-  description = "Subdomain to use for Polybot ingress"
-  type        = string
-}
