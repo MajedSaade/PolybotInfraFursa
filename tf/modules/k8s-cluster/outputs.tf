@@ -10,3 +10,7 @@ output "vpc_id" {
   value       = var.vpc_id
   description = "The ID of the VPC where the cluster is deployed"
 }
+output "hosted_zone_id" {
+  value       = data.aws_route53_zone.primary.zone_id
+  description = "The ID of the hosted zone"
+}
