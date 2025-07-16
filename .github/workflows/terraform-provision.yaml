@@ -1,69 +1,88 @@
-name: Provision Infrastructure
+name: Bootstrap K8s Control Plane
 
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
 
 jobs:
-  terraform:
+  setup-control-plane:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: tf
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout Repo
+        uses: actions/checkout@v4
 
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v2
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: us-west-2
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-2
 
-    - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v3
+      - name: Read control plane IP from AWS SSM
+        id: read_ip
+        run: |
+          CONTROL_PLANE_IP=$(aws ssm get-parameter \
+            --name "/k8s/control-plane-ip" \
+            --query "Parameter.Value" \
+            --output text)
+          echo "✅ IP from SSM: $CONTROL_PLANE_IP"
+          echo "CONTROL_PLANE_IP=$CONTROL_PLANE_IP" >> $GITHUB_ENV
 
-    - name: Terraform Init
-      run: terraform init
+      - name: Export Discord Bot Tokens to Environment
+        run: |
+          echo "DISCORD_BOT_TOKEN_DEV=${{ secrets.DISCORD_BOT_TOKEN_DEV }}" >> $GITHUB_ENV
+          echo "DISCORD_BOT_TOKEN_PROD=${{ secrets.DISCORD_BOT_TOKEN_PROD }}" >> $GITHUB_ENV
 
-    - name: Terraform Apply
-      run: terraform apply -auto-approve -var-file="region.us-west-2.dev.tfvars"
+      - name: Bootstrap ArgoCD and Sync Apps on Control Plane
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ env.CONTROL_PLANE_IP }}
+          username: ubuntu
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          envs: DISCORD_BOT_TOKEN_DEV,DISCORD_BOT_TOKEN_PROD
+          script: |
+            set -e
 
-    - name: Store control plane IP in AWS SSM
-      run: |
-        CONTROL_PLANE_IP=$(terraform output -raw control_plane_public_ip)
-        echo "✅ Control plane IP: $CONTROL_PLANE_IP"
-        aws ssm put-parameter \
-          --name "/k8s/control-plane-ip" \
-          --value "$CONTROL_PLANE_IP" \
-          --type String \
-          --overwrite
+            echo "🔧 Updating system..."
+            sudo apt-get update -y
+            sudo apt-get install -y git curl
 
-    - name: Store VPC ID in AWS SSM
-      run: |
-        VPC_ID=$(terraform output -raw vpc_id)
-        echo "✅ VPC ID: $VPC_ID"
-        aws ssm put-parameter \
-          --name "/k8s/vpc-id" \
-          --value "$VPC_ID" \
-          --type String \
-          --overwrite
+            echo "📡 Cloning repo..."
+            rm -rf ~/PolybotInfraFursa
+            git clone https://github.com/MajedSaade/PolybotInfraFursa.git ~/PolybotInfraFursa
 
-    - name: Upload DEV Discord token to SSM
-      run: |
-        aws ssm put-parameter \
-          --name "/polybot/dev/DISCORD_BOT_TOKEN" \
-          --value "${{ secrets.DISCORD_BOT_TOKEN_DEV }}" \
-          --type "SecureString" \
-          --overwrite
+            echo "🚀 Installing ArgoCD..."
+            kubectl create namespace argocd || true
+            kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 
-    - name: Upload PROD Discord token to SSM
-      run: |
-        aws ssm put-parameter \
-          --name "/polybot/prod/DISCORD_BOT_TOKEN" \
-          --value "${{ secrets.DISCORD_BOT_TOKEN_PROD }}" \
-          --type "SecureString" \
-          --overwrite
+            echo "⏳ Waiting for ArgoCD to be ready..."
+            kubectl wait --for=condition=available --timeout=300s deployment/argocd-server -n argocd
+
+            echo "🔐 ArgoCD admin password:"
+            kubectl -n argocd get secret argocd-initial-admin-secret \
+              -o jsonpath="{.data.password}" | base64 -d && echo
+
+            echo "📦 Creating discord-token secrets in dev and prod..."
+            kubectl create namespace dev || true
+            kubectl create namespace prod || true
+            kubectl create namespace monitoring || true
+            
+
+            echo "🔍 Token length (dev): ${#DISCORD_BOT_TOKEN_DEV}"
+            echo "🔍 Token length (prod): ${#DISCORD_BOT_TOKEN_PROD}"
+
+            kubectl create secret generic discord-token \
+              --from-literal=DISCORD_BOT_TOKEN="${DISCORD_BOT_TOKEN_DEV}" \
+              -n dev --dry-run=client -o yaml | kubectl apply -f -
+
+            kubectl create secret generic discord-token \
+              --from-literal=DISCORD_BOT_TOKEN="${DISCORD_BOT_TOKEN_PROD}" \
+              -n prod --dry-run=client -o yaml | kubectl apply -f -
+            
+            echo "⏳ Sleeping 15 seconds to allow ArgoCD services to stabilize..."
+            sleep 15
+            
+            echo "📡 Applying apps-of-apps manifest..."
+            kubectl apply -f ~/PolybotInfraFursa/k8s/argo-apps/apps-of-apps.yaml
+
+            echo "✅ Bootstrap complete. Access ArgoCD via port-forward or configure Ingress."
