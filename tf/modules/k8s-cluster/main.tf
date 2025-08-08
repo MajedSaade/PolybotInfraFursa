@@ -323,3 +323,10 @@ resource "aws_iam_policy" "eso_ssm_access" {
     ]
   })
 }
+ingress {
+  description     = "Allow ALB to reach NodePorts"
+  from_port       = 30000
+  to_port         = 32767
+  protocol        = "tcp"
+  security_groups = [var.alb_sg_id]
+}

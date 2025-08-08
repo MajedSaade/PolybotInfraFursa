@@ -55,3 +55,26 @@ module "k8s_cluster" {
   instance_profile_name = "k8s-worker-profile-${var.env}"
   account_id          = var.account_id
 }
+
+module "alb" {
+  source = "./modules/alb"
+
+  env                = var.env
+  vpc_id             = var.vpc_id
+  public_subnet_ids  = var.public_subnet[1]
+
+  # from your cluster module output:
+  worker_asg_name    = module.k8s_cluster.worker_asg_name
+
+  ingress_nodeport   = var.ingress_nodeport
+  certificate_arn    = var.certificate_arn
+  allowed_ingress_cidrs = var.allowed_ingress_cidrs
+  health_check_path  = var.health_check_path
+  enable_http_redirect = true
+
+  # Optional DNS
+  route53_zone_id = var.route53_zone_id
+  record_name     = var.record_name
+
+  tags = var.tags
+}
