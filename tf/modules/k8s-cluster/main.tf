@@ -323,4 +323,3 @@ resource "aws_iam_policy" "eso_ssm_access" {
     ]
   })
 }
-
