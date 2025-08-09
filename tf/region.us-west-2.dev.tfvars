@@ -15,3 +15,4 @@ ingress_nodeport  = 30080                       # <- your Nginx Ingress Service 
 record_name       = "majed.fursa.click"       # optional pretty DNS
 route53_zone_id   = "ZREPLACE"                  # Route53 hosted zone ID
 allowed_ingress_cidrs = ["0.0.0.0/0"]           # or Telegram webhook CIDRs to harden
+certificate_arn = "arn:aws:acm:us-west-2:<ACCOUNT_ID>:certificate/<CERT_UUID>"

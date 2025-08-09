@@ -59,22 +59,32 @@ module "k8s_cluster" {
 module "alb" {
   source = "./modules/alb"
 
-  env                = var.env
-  vpc_id             = var.vpc_id
-  public_subnet_ids  = var.public_subnet[1]
+  env               = var.env
+  vpc_id            = module.vpc.vpc_id
+  public_subnet_ids = module.vpc.public_subnets
 
-  # from your cluster module output:
-  worker_asg_name    = module.k8s_cluster.worker_asg_name
+  worker_asg_name   = module.k8s_cluster.worker_asg_name
 
-  ingress_nodeport   = var.ingress_nodeport
-  certificate_arn    = var.certificate_arn
+  ingress_nodeport      = var.ingress_nodeport
+  certificate_arn       = var.certificate_arn
   allowed_ingress_cidrs = var.allowed_ingress_cidrs
-  health_check_path  = var.health_check_path
-  enable_http_redirect = true
+  health_check_path     = var.health_check_path
+  enable_http_redirect  = true
 
-  # Optional DNS
-  route53_zone_id = var.route53_zone_id
-  record_name     = var.record_name
+  route53_zone_id = var.route53_zone_id   # optional
+  record_name     = var.record_name       # optional
 
   tags = var.tags
 }
+
+
+resource "aws_security_group_rule" "allow_alb_to_nodeport" {
+  type                     = "ingress"
+  from_port                = var.ingress_nodeport       # or 30000, to_port=32767 for full range
+  to_port                  = var.ingress_nodeport
+  protocol                 = "tcp"
+  security_group_id        = module.k8s_cluster.worker_sg_id
+  source_security_group_id = module.alb.alb_sg_id
+  description              = "Allow ALB -> Nginx Ingress NodePort"
+}
+

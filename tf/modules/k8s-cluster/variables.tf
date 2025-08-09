@@ -48,7 +48,3 @@ variable "account_id" {
   type        = string
   description = "AWS Account ID used in IAM policy to access SSM parameter"
 }
-variable "alb_sg_id" {
-  type        = string
-  description = "ALB security group ID (to allow ALB -> NodePort)"
-}
